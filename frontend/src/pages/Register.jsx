@@ -1,7 +1,6 @@
 import { useState, useContext } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, Navigate } from 'react-router-dom'
 import { AuthContext } from '../context/AuthContext'
-import { ErrorAlert, SuccessAlert } from '../components/Utils'
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -13,8 +12,15 @@ export default function Register() {
   })
   const [localError, setLocalError] = useState('')
   const [success, setSuccess] = useState('')
-  const { register, loading } = useContext(AuthContext)
+  const { register, loading, user } = useContext(AuthContext)
   const navigate = useNavigate()
+
+  // Already logged in
+  if (user) {
+    if (user.role === 'admin') return <Navigate to="/admin" replace />
+    if (user.role === 'seller') return <Navigate to="/seller" replace />
+    return <Navigate to="/" replace />
+  }
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -30,97 +36,125 @@ export default function Register() {
       setLocalError('Passwords do not match')
       return
     }
+    if (formData.password.length < 6) {
+      setLocalError('Password must be at least 6 characters')
+      return
+    }
 
     try {
       await register(formData.name, formData.email, formData.password, formData.confirmPassword, formData.role)
-      setSuccess('Registration successful! Redirecting...')
-      setTimeout(() => navigate('/'), 2000)
+      setSuccess('Account created successfully! Redirecting...')
+      setTimeout(() => {
+        if (formData.role === 'seller') navigate('/seller')
+        else navigate('/')
+      }, 1500)
     } catch (err) {
-      setLocalError(err.response?.data?.error || 'Registration failed')
+      setLocalError(err.response?.data?.error || 'Registration failed. Please try again.')
     }
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12">
-      <div className="card w-full max-w-md">
-        <h2 className="text-3xl font-bold mb-6 text-center">Create Account</h2>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
+      <div className="bg-white rounded-2xl shadow-md p-8 w-full max-w-md">
+        <h2 className="text-3xl font-bold mb-6 text-center text-gray-900">Create Account</h2>
 
-        {localError && <ErrorAlert message={localError} />}
-        {success && <SuccessAlert message={success} />}
+        {localError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
+            {localError}
+          </div>
+        )}
+        {success && (
+          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4 text-sm">
+            {success}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Full Name</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
             <input
               type="text"
               name="name"
-              className="input-field"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={formData.name}
               onChange={handleChange}
               required
+              placeholder="John Doe"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Email</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
             <input
               type="email"
               name="email"
-              className="input-field"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={formData.email}
               onChange={handleChange}
               required
+              placeholder="you@example.com"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Password</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
             <input
               type="password"
               name="password"
-              className="input-field"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={formData.password}
               onChange={handleChange}
               required
+              placeholder="Min. 6 characters"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Confirm Password</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
             <input
               type="password"
               name="confirmPassword"
-              className="input-field"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={formData.confirmPassword}
               onChange={handleChange}
               required
+              placeholder="Repeat password"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Register As</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Register As</label>
             <select
               name="role"
-              className="input-field"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={formData.role}
               onChange={handleChange}
             >
-              <option value="buyer">Buyer</option>
-              <option value="seller">Seller</option>
+              <option value="buyer">🛒 Buyer — Browse and purchase products</option>
+              <option value="seller">🏪 Seller — Create a shop and sell products</option>
             </select>
+            {formData.role === 'seller' && (
+              <p className="text-xs text-amber-600 mt-1">
+                ⚠ After registering, you must create your shop and publish at least 3 products to activate it.
+              </p>
+            )}
+            <p className="text-xs text-gray-400 mt-1">
+              Admin accounts are created by the platform administrator only.
+            </p>
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="btn-primary w-full"
+            className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-60"
           >
             {loading ? 'Creating account...' : 'Create Account'}
           </button>
         </form>
 
-        <p className="text-center mt-4 text-gray-600">
-          Already have an account? <Link to="/login" className="text-blue-600 hover:underline">Login</Link>
+        <p className="text-center mt-4 text-sm text-gray-600">
+          Already have an account?{' '}
+          <Link to="/login" className="text-blue-600 font-medium hover:underline">Sign in</Link>
         </p>
       </div>
     </div>

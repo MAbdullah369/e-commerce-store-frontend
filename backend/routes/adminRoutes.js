@@ -9,8 +9,32 @@ const router = express.Router();
 router.use(authMiddleware);
 router.use(roleMiddleware(['admin']));
 
-// Review management
-router.post('/reviews/:reviewId/helpful', adminController.markHelpful);
+// ==================== DASHBOARD ====================
+router.get('/dashboard', adminController.getDashboard);
+
+// ==================== USER MANAGEMENT ====================
+router.get('/users/active', adminController.getActiveUsers);
+router.get('/users/:userId', adminController.getUserDetails);
+router.patch('/users/:userId/deactivate', adminController.deactivateUser);
+router.patch('/users/:userId/activate', adminController.activateUser);
+
+// ==================== SELLER MANAGEMENT ====================
+router.get('/sellers', adminController.getAllSellers);
+router.get('/sellers/active', adminController.getActiveSellers);
+router.patch('/sellers/:shopId/approve', adminController.approveSeller);
+router.patch('/sellers/:shopId/suspend', adminController.suspendSeller);
+
+// ==================== CATEGORY MANAGEMENT ====================
+router.get('/categories', adminController.getAllCategories);
+router.post('/categories', adminController.createCategory);
+router.patch('/categories/:categoryId', adminController.updateCategory);
+router.delete('/categories/:categoryId', adminController.deleteCategory);
+
+// ==================== PRODUCT MANAGEMENT ====================
+router.get('/products', adminController.getAllProducts);
+
+// ==================== REVIEW MANAGEMENT ====================
 router.delete('/reviews/:reviewId', adminController.deleteReview);
+router.post('/reviews/:reviewId/helpful', adminController.markHelpful);
 
 module.exports = router;

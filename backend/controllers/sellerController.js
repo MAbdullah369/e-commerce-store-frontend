@@ -2,17 +2,21 @@ const User = require('../models/User');
 const Shops = require('../models/Shops');
 const Product = require('../models/Product');
 
-// Register as seller
+// Register as seller (Create shop)
 exports.registerAsSeller = async (req, res, next) => {
   try {
     const { shopName, description, phone, email, address } = req.body;
+
+    if (!shopName) {
+      return res.status(400).json({ error: 'Please provide shop name' });
+    }
 
     const user = await User.findById(req.userId);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    if (user.isSeller) {
+    if (user.role === 'seller') {
       return res.status(400).json({ error: 'Already registered as seller' });
     }
 
@@ -28,17 +32,18 @@ exports.registerAsSeller = async (req, res, next) => {
       phone,
       email,
       address,
+      shopStatus: 'pending', // Shop is pending until requirements are met
+      hasMetRequirements: false,
     });
 
     await shop.save();
 
-    user.isSeller = true;
+    // Update user role to seller
     user.role = 'seller';
-    user.shop = shop._id;
     await user.save();
 
     res.status(201).json({
-      message: 'Seller registration successful',
+      message: 'Seller registration successful. Please publish at least 3 products to activate your shop.',
       shop,
     });
   } catch (err) {
@@ -161,6 +166,122 @@ exports.getSellerById = async (req, res, next) => {
     }
 
     res.json(shop);
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ==================== PRODUCT PUBLISHING ====================
+
+// Create product (seller creates draft)
+exports.createProduct = async (req, res, next) => {
+  try {
+    const { name, description, price, category, stock, image } = req.body;
+
+    if (!name || !description || !price || !category) {
+      return res.status(400).json({ error: 'Please provide all required fields' });
+    }
+
+    // Check if seller has a shop
+    const shop = await Shops.findOne({ seller: req.userId });
+    if (!shop) {
+      return res.status(404).json({ error: 'Shop not found. Please create a shop first.' });
+    }
+
+    const product = new Product({
+      name,
+      description,
+      price,
+      category,
+      stock: stock || 0,
+      seller: req.userId,
+      image,
+      isPublished: false, // Start as unpublished draft
+    });
+
+    await product.save();
+
+    res.status(201).json({
+      message: 'Product created successfully',
+      product,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Publish product
+exports.publishProduct = async (req, res, next) => {
+  try {
+    const { productId } = req.params;
+
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    if (product.seller.toString() !== req.userId) {
+      return res.status(403).json({ error: 'Not authorized to publish this product' });
+    }
+
+    product.isPublished = true;
+    await product.save();
+
+    // Check if seller has published at least 3 products
+    const publishedCount = await Product.countDocuments({
+      seller: req.userId,
+      isPublished: true,
+    });
+
+    const shop = await Shops.findOne({ seller: req.userId });
+    shop.publishedProducts = publishedCount;
+
+    // If seller has 3+ products, activate the shop
+    if (publishedCount >= 3 && shop.shopStatus === 'pending') {
+      shop.shopStatus = 'active';
+      shop.hasMetRequirements = true;
+      await shop.save();
+
+      return res.json({
+        message: 'Product published successfully. Congratulations! Your shop is now active.',
+        product,
+        shop,
+      });
+    } else {
+      await shop.save();
+
+      const remaining = Math.max(0, 3 - publishedCount);
+      return res.json({
+        message: `Product published successfully. ${remaining} more products needed to activate your shop.`,
+        product,
+        publishedProducts: publishedCount,
+        remainingRequired: remaining,
+      });
+    }
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Get shop activation status
+exports.getShopStatus = async (req, res, next) => {
+  try {
+    const shop = await Shops.findOne({ seller: req.userId });
+    if (!shop) {
+      return res.status(404).json({ error: 'Shop not found' });
+    }
+
+    const publishedCount = await Product.countDocuments({
+      seller: req.userId,
+      isPublished: true,
+    });
+
+    res.json({
+      shopStatus: shop.shopStatus,
+      hasMetRequirements: shop.hasMetRequirements,
+      publishedProducts: publishedCount,
+      remainingRequired: Math.max(0, 3 - publishedCount),
+    });
   } catch (err) {
     next(err);
   }

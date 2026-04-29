@@ -18,6 +18,13 @@ router.get('/products', authMiddleware, roleMiddleware(['seller', 'admin']), sel
 // Seller sales
 router.get('/sales', authMiddleware, roleMiddleware(['seller', 'admin']), sellerController.getSellerSales);
 
+// Shop status
+router.get('/shop/status', authMiddleware, roleMiddleware(['seller']), sellerController.getShopStatus);
+
+// Product publishing
+router.post('/products/create', authMiddleware, roleMiddleware(['seller']), sellerController.createProduct);
+router.patch('/products/:productId/publish', authMiddleware, roleMiddleware(['seller']), sellerController.publishProduct);
+
 // Public routes
 router.get('/', sellerController.getAllSellers);
 router.get('/:sellerId', sellerController.getSellerById);

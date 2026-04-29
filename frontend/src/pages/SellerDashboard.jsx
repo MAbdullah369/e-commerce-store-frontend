@@ -1,251 +1,474 @@
 import { useContext, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate, Navigate } from 'react-router-dom'
 import { AuthContext } from '../context/AuthContext'
 import { sellerAPI } from '../services/api'
-import { Loading, ErrorAlert } from '../components/Utils'
 
 export default function SellerDashboard() {
-  const { user } = useContext(AuthContext)
+  const { user, loading: authLoading } = useContext(AuthContext)
+  const navigate = useNavigate()
   const [stats, setStats] = useState(null)
   const [products, setProducts] = useState([])
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState('overview')
+  const [shop, setShop] = useState(null)
+  const [shopNotFound, setShopNotFound] = useState(false)
+  const [showCreateShop, setShowCreateShop] = useState(false)
+  const [shopForm, setShopForm] = useState({
+    shopName: '',
+    description: '',
+    logo: '',
+    address: { street: '', city: '', state: '', zipCode: '', country: '' },
+  })
+  const [shopLoading, setShopLoading] = useState(false)
 
+  // Auth guard — only sellers allowed
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-gray-400 text-lg">Loading...</div>
+      </div>
+    )
+  }
+  if (!user) return <Navigate to="/login" replace />
+  if (user.role !== 'seller') return <Navigate to="/" replace />
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
-    fetchData()
+    fetchShopAndData()
   }, [activeTab])
 
-  const fetchData = async () => {
+  const fetchShopAndData = async () => {
     try {
       setLoading(true)
+      setShopNotFound(false)
+      const shopRes = await sellerAPI.getMyShop()
+      setShop(shopRes.data)
 
-      if (activeTab === 'overview') {
-        const statsRes = await sellerAPI.getSellerStats()
-        setStats(statsRes.data)
-      } else if (activeTab === 'products') {
-        const productsRes = await sellerAPI.getSellerProducts()
-        setProducts(productsRes.data)
-      } else if (activeTab === 'orders') {
-        const ordersRes = await sellerAPI.getSellerOrders()
-        setOrders(ordersRes.data)
+      if (shopRes.data && shopRes.data.shopStatus === 'active') {
+        if (activeTab === 'overview') {
+          const statsRes = await sellerAPI.getSellerStats()
+          setStats(statsRes.data)
+        } else if (activeTab === 'products') {
+          const productsRes = await sellerAPI.getSellerProducts()
+          setProducts(productsRes.data || [])
+        } else if (activeTab === 'orders') {
+          const ordersRes = await sellerAPI.getSellerOrders()
+          setOrders(ordersRes.data || [])
+        }
+      } else if (shopRes.data && shopRes.data.shopStatus === 'pending') {
+        // Load products to show progress
+        try {
+          const productsRes = await sellerAPI.getSellerProducts()
+          setProducts(productsRes.data || [])
+        } catch (_) {}
       }
-
       setError('')
     } catch (err) {
-      setError('Failed to load data')
-      console.error(err)
+      if (err.response?.status === 404) {
+        setShop(null)
+        setShopNotFound(true)
+      } else {
+        setError('Failed to load data. Please refresh.')
+        console.error(err)
+      }
     } finally {
       setLoading(false)
     }
   }
 
-  if (loading) return <Loading />
+  const handleCreateShop = async (e) => {
+    e.preventDefault()
+    setShopLoading(true)
+    try {
+      const response = await sellerAPI.createShop(shopForm)
+      setShop(response.data)
+      setShopNotFound(false)
+      setShowCreateShop(false)
+      alert('Shop created! Now publish at least 3 products to activate it.')
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to create shop')
+    } finally {
+      setShopLoading(false)
+    }
+  }
 
+  const handleDeleteProduct = async (productId) => {
+    if (!window.confirm('Delete this product?')) return
+    try {
+      await sellerAPI.deleteProduct(productId)
+      fetchShopAndData()
+    } catch (err) {
+      alert('Failed to delete product')
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-gray-400 text-lg">Loading...</div>
+      </div>
+    )
+  }
+
+  // ── Step 1: No shop yet — prompt to create ──
+  if (shopNotFound || (!shop && !loading)) {
+    return (
+      <div className="bg-gray-50 min-h-screen py-12">
+        <div className="max-w-2xl mx-auto px-4">
+          <div className="bg-white rounded-2xl shadow-md p-8">
+            <div className="text-center mb-8">
+              <div className="text-6xl mb-4">🏪</div>
+              <h1 className="text-3xl font-bold text-gray-900">Welcome, {user?.name}!</h1>
+              <p className="text-gray-500 mt-2">You need to create your shop before you can start selling.</p>
+            </div>
+
+            {!showCreateShop ? (
+              <div className="text-center">
+                <button onClick={() => setShowCreateShop(true)} className="bg-blue-600 text-white px-8 py-3 rounded-xl font-semibold hover:bg-blue-700 transition">
+                  Create Your Shop
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleCreateShop} className="space-y-4">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">Shop Details</h2>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Shop Name *</label>
+                  <input
+                    type="text"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={shopForm.shopName}
+                    onChange={(e) => setShopForm({ ...shopForm, shopName: e.target.value })}
+                    required
+                    placeholder="My Awesome Shop"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
+                  <textarea
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    rows="3"
+                    value={shopForm.description}
+                    onChange={(e) => setShopForm({ ...shopForm, description: e.target.value })}
+                    required
+                    placeholder="Tell buyers about your shop..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Logo URL (optional)</label>
+                  <input
+                    type="url"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={shopForm.logo}
+                    onChange={(e) => setShopForm({ ...shopForm, logo: e.target.value })}
+                    placeholder="https://..."
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                    <input
+                      type="text"
+                      className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={shopForm.address.city}
+                      onChange={(e) => setShopForm({ ...shopForm, address: { ...shopForm.address, city: e.target.value } })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
+                    <input
+                      type="text"
+                      className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={shopForm.address.country}
+                      onChange={(e) => setShopForm({ ...shopForm, address: { ...shopForm.address, country: e.target.value } })}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button type="submit" disabled={shopLoading} className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl font-semibold hover:bg-blue-700 transition disabled:opacity-60">
+                    {shopLoading ? 'Creating...' : 'Create Shop'}
+                  </button>
+                  <button type="button" onClick={() => setShowCreateShop(false)} className="flex-1 border border-gray-300 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-50 transition">
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Step 2: Shop exists but pending — needs 3 products ──
+  if (shop && shop.shopStatus === 'pending') {
+    const published = products.filter(p => p.isPublished).length
+    const needed = Math.max(0, 3 - published)
+
+    return (
+      <div className="bg-gray-50 min-h-screen py-12">
+        <div className="max-w-2xl mx-auto px-4">
+          <div className="bg-white rounded-2xl shadow-md p-8">
+            <div className="text-center mb-8">
+              <div className="text-5xl mb-4">⏳</div>
+              <h1 className="text-2xl font-bold text-gray-900">Complete Your Shop Setup</h1>
+              <p className="text-gray-500 mt-2">"{shop.shopName}" is pending activation.</p>
+            </div>
+
+            {/* Progress */}
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 mb-6">
+              <div className="flex justify-between items-center mb-3">
+                <p className="font-semibold text-amber-900">Published Products</p>
+                <span className="text-2xl font-bold text-amber-700">{published} / 3</span>
+              </div>
+              <div className="w-full bg-amber-200 rounded-full h-3">
+                <div
+                  className="bg-amber-500 h-3 rounded-full transition-all"
+                  style={{ width: `${Math.min(100, (published / 3) * 100)}%` }}
+                />
+              </div>
+              {needed > 0 && (
+                <p className="text-sm text-amber-700 mt-2">
+                  Publish {needed} more product{needed > 1 ? 's' : ''} to activate your shop
+                </p>
+              )}
+            </div>
+
+            {products.length > 0 && (
+              <div className="mb-6">
+                <p className="font-medium text-gray-700 mb-3">Your products:</p>
+                <div className="space-y-2">
+                  {products.map(p => (
+                    <div key={p._id} className="flex justify-between items-center py-2 border-b last:border-b-0">
+                      <span className="text-gray-700">{p.name}</span>
+                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${p.isPublished ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                        {p.isPublished ? '✓ Published' : 'Draft'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <Link
+              to="/seller/products/new"
+              className="block text-center bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition"
+            >
+              + Add New Product
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Step 3: Active shop — full dashboard ──
   return (
     <div className="bg-gray-50 min-h-screen">
       {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <h1 className="text-4xl font-bold">Seller Dashboard</h1>
-          <p className="text-gray-600 mt-2">Welcome, {user?.name}</p>
+      <div className="bg-white border-b shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Seller Dashboard</h1>
+              <p className="text-gray-500 mt-1">
+                {shop?.shopName} •{' '}
+                <span className="text-green-600 font-medium">● Active</span>
+              </p>
+            </div>
+            <Link to="/seller/products/new" className="bg-blue-600 text-white px-5 py-2 rounded-xl font-semibold hover:bg-blue-700 transition text-sm">
+              + Add Product
+            </Link>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex gap-0 border-b">
+            {['overview', 'products', 'orders', 'analytics'].map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-6 py-3 font-medium text-sm border-b-2 transition ${
+                  activeTab === tab
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-800'
+                }`}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Navigation */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div className="flex gap-4 border-b">
-          {['overview', 'products', 'orders', 'analytics'].map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 font-medium border-b-2 ${
-                activeTab === tab
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {error && <ErrorAlert message={error} />}
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 text-sm">
+            {error}
+          </div>
+        )}
 
         {/* Overview Tab */}
         {activeTab === 'overview' && stats && (
           <div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              <div className="card">
-                <h3 className="text-gray-600 text-sm font-medium">Total Products</h3>
-                <p className="text-4xl font-bold mt-2">{stats.totalProducts}</p>
-              </div>
-              <div className="card">
-                <h3 className="text-gray-600 text-sm font-medium">Total Orders</h3>
-                <p className="text-4xl font-bold mt-2">{stats.totalOrders}</p>
-              </div>
-              <div className="card">
-                <h3 className="text-gray-600 text-sm font-medium">Total Sales</h3>
-                <p className="text-4xl font-bold mt-2 text-blue-600">${stats.totalSales?.toFixed(2)}</p>
-              </div>
-              <div className="card">
-                <h3 className="text-gray-600 text-sm font-medium">Avg Rating</h3>
-                <p className="text-4xl font-bold mt-2 text-yellow-500">{stats.averageRating?.toFixed(1)}</p>
-              </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+              {[
+                { label: 'Total Products', value: stats.totalProducts || 0, color: 'text-blue-600' },
+                { label: 'Total Orders', value: stats.totalOrders || 0, color: 'text-purple-600' },
+                { label: 'Total Sales', value: `$${stats.totalSales?.toFixed(2) || '0.00'}`, color: 'text-green-600' },
+                { label: 'Avg Rating', value: stats.averageRating?.toFixed(1) || 'N/A', color: 'text-yellow-500' },
+              ].map(({ label, value, color }) => (
+                <div key={label} className="bg-white rounded-xl p-6 shadow-sm border">
+                  <p className="text-sm text-gray-500 font-medium">{label}</p>
+                  <p className={`text-3xl font-bold mt-1 ${color}`}>{value}</p>
+                </div>
+              ))}
             </div>
 
-            {/* Quick Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <Link to="/seller/products/new" className="card hover:shadow-lg cursor-pointer">
-                <h3 className="text-lg font-bold mb-2">Add New Product</h3>
-                <p className="text-gray-600">Create and list a new product</p>
-              </Link>
-              <Link to="/seller/orders" className="card hover:shadow-lg cursor-pointer">
-                <h3 className="text-lg font-bold mb-2">Manage Orders</h3>
-                <p className="text-gray-600">View and fulfill orders</p>
-              </Link>
-              <Link to="/seller/analytics" className="card hover:shadow-lg cursor-pointer">
-                <h3 className="text-lg font-bold mb-2">View Analytics</h3>
-                <p className="text-gray-600">Check sales and performance</p>
-              </Link>
-            </div>
-
-            {/* Recent Orders */}
-            <div className="card">
-              <h2 className="text-2xl font-bold mb-4">Recent Orders</h2>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-3 px-4 font-semibold">Order ID</th>
-                      <th className="text-left py-3 px-4 font-semibold">Customer</th>
-                      <th className="text-left py-3 px-4 font-semibold">Amount</th>
-                      <th className="text-left py-3 px-4 font-semibold">Status</th>
-                      <th className="text-left py-3 px-4 font-semibold">Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {stats.recentOrders?.map(order => (
-                      <tr key={order._id} className="border-b hover:bg-gray-50">
-                        <td className="py-3 px-4">{order.orderNumber}</td>
-                        <td className="py-3 px-4">{order.user?.name}</td>
-                        <td className="py-3 px-4 font-semibold">${order.totalAmount.toFixed(2)}</td>
-                        <td className="py-3 px-4">
-                          <span className={`px-3 py-1 rounded text-white text-sm ${
-                            order.status === 'delivered' ? 'bg-green-500' :
-                            order.status === 'shipped' ? 'bg-blue-500' :
-                            'bg-yellow-500'
-                          }`}>
-                            {order.status}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">{new Date(order.createdAt).toLocaleDateString()}</td>
+            {stats.recentOrders && stats.recentOrders.length > 0 && (
+              <div className="bg-white rounded-xl shadow-sm border p-6">
+                <h2 className="text-xl font-bold mb-4">Recent Orders</h2>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b text-gray-500">
+                        <th className="text-left py-2 px-3 font-medium">Order</th>
+                        <th className="text-left py-2 px-3 font-medium">Customer</th>
+                        <th className="text-left py-2 px-3 font-medium">Amount</th>
+                        <th className="text-left py-2 px-3 font-medium">Status</th>
+                        <th className="text-left py-2 px-3 font-medium">Date</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {stats.recentOrders.map(order => (
+                        <tr key={order._id} className="border-b hover:bg-gray-50">
+                          <td className="py-3 px-3 font-medium">{order.orderNumber}</td>
+                          <td className="py-3 px-3">{order.user?.name}</td>
+                          <td className="py-3 px-3 font-semibold">${order.totalAmount.toFixed(2)}</td>
+                          <td className="py-3 px-3">
+                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                              order.status === 'delivered' ? 'bg-green-100 text-green-700' :
+                              order.status === 'shipped' ? 'bg-blue-100 text-blue-700' :
+                              'bg-yellow-100 text-yellow-700'
+                            }`}>
+                              {order.status}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-gray-500">{new Date(order.createdAt).toLocaleDateString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 
         {/* Products Tab */}
         {activeTab === 'products' && (
-          <div className="card">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold">My Products</h2>
-              <Link to="/seller/products/new" className="btn-primary">
-                Add Product
+          <div className="bg-white rounded-xl shadow-sm border">
+            <div className="flex justify-between items-center p-6 border-b">
+              <h2 className="text-xl font-bold">My Products</h2>
+              <Link to="/seller/products/new" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium">
+                + Add Product
               </Link>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-4 font-semibold">Product Name</th>
-                    <th className="text-left py-3 px-4 font-semibold">Price</th>
-                    <th className="text-left py-3 px-4 font-semibold">Stock</th>
-                    <th className="text-left py-3 px-4 font-semibold">Rating</th>
-                    <th className="text-left py-3 px-4 font-semibold">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {products.map(product => (
-                    <tr key={product._id} className="border-b hover:bg-gray-50">
-                      <td className="py-3 px-4 font-semibold">{product.name}</td>
-                      <td className="py-3 px-4">${product.price.toFixed(2)}</td>
-                      <td className="py-3 px-4">
-                        <span className={`px-3 py-1 rounded text-sm ${
-                          product.stock > 10 ? 'bg-green-100 text-green-800' :
-                          product.stock > 0 ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'
-                        }`}>
-                          {product.stock}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">⭐ {product.rating?.toFixed(1) || 'N/A'}</td>
-                      <td className="py-3 px-4">
-                        <Link to={`/seller/products/${product._id}/edit`} className="text-blue-600 hover:text-blue-800 mr-3">
-                          Edit
-                        </Link>
-                        <button className="text-red-600 hover:text-red-800">
-                          Delete
-                        </button>
-                      </td>
+            {products.length === 0 ? (
+              <p className="text-center py-12 text-gray-400">No products yet.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b">
+                    <tr>
+                      {['Product', 'Price', 'Stock', 'Status', 'Rating', 'Actions'].map(h => (
+                        <th key={h} className="text-left py-3 px-4 font-semibold text-gray-500 text-xs uppercase">{h}</th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {products.map(product => (
+                      <tr key={product._id} className="hover:bg-gray-50">
+                        <td className="py-3 px-4 font-medium text-gray-900">{product.name}</td>
+                        <td className="py-3 px-4">${product.price.toFixed(2)}</td>
+                        <td className="py-3 px-4">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            product.stock > 10 ? 'bg-green-100 text-green-700' :
+                            product.stock > 0 ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-red-100 text-red-700'
+                          }`}>
+                            {product.stock}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            product.isPublished ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                          }`}>
+                            {product.isPublished ? 'Published' : 'Draft'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-yellow-500">⭐ {product.rating?.toFixed(1) || 'N/A'}</td>
+                        <td className="py-3 px-4 flex gap-3">
+                          <Link to={`/seller/products/${product._id}/edit`} className="text-blue-600 hover:text-blue-800 font-medium">Edit</Link>
+                          <button onClick={() => handleDeleteProduct(product._id)} className="text-red-500 hover:text-red-700 font-medium">Delete</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
         {/* Orders Tab */}
         {activeTab === 'orders' && (
-          <div className="card">
-            <h2 className="text-2xl font-bold mb-4">Orders for Fulfillment</h2>
-            <div className="space-y-4">
-              {orders.map(order => (
-                <div key={order._id} className="border rounded-lg p-4 hover:shadow-lg transition">
-                  <div className="flex justify-between items-start mb-2">
+          <div className="space-y-4">
+            {orders.length === 0 ? (
+              <div className="bg-white rounded-xl p-12 text-center text-gray-400 border">No orders yet.</div>
+            ) : (
+              orders.map(order => (
+                <div key={order._id} className="bg-white rounded-xl shadow-sm border p-6">
+                  <div className="flex justify-between items-start mb-3">
                     <div>
-                      <h3 className="font-bold text-lg">Order {order.orderNumber}</h3>
-                      <p className="text-gray-600">Customer: {order.user?.name}</p>
+                      <h3 className="font-bold text-gray-900">Order {order.orderNumber}</h3>
+                      <p className="text-gray-500 text-sm">Customer: {order.user?.name}</p>
                     </div>
-                    <span className={`px-3 py-1 rounded text-white text-sm font-medium ${
-                      order.status === 'delivered' ? 'bg-green-500' :
-                      order.status === 'shipped' ? 'bg-blue-500' :
-                      order.status === 'pending' ? 'bg-yellow-500' :
-                      'bg-red-500'
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                      order.status === 'delivered' ? 'bg-green-100 text-green-700' :
+                      order.status === 'shipped' ? 'bg-blue-100 text-blue-700' :
+                      order.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                      'bg-red-100 text-red-700'
                     }`}>
                       {order.status}
                     </span>
                   </div>
-                  <div className="mb-3">
-                    {order.items.map((item, idx) => (
-                      <p key={idx} className="text-sm text-gray-600">
-                        {item.product.name} x {item.quantity}
-                      </p>
+                  <div className="text-sm text-gray-600 mb-3">
+                    {order.items?.map((item, idx) => (
+                      <span key={idx}>{item.product?.name} x{item.quantity}{idx < order.items.length - 1 ? ', ' : ''}</span>
                     ))}
                   </div>
-                  <Link to={`/seller/orders/${order._id}`} className="text-blue-600 hover:text-blue-800">
-                    View Details
+                  <Link to={`/seller/orders/${order._id}`} className="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                    View Details →
                   </Link>
                 </div>
-              ))}
-            </div>
+              ))
+            )}
           </div>
         )}
 
         {/* Analytics Tab */}
         {activeTab === 'analytics' && (
-          <div className="card">
-            <h2 className="text-2xl font-bold mb-4">Sales Analytics</h2>
-            <p className="text-gray-600">Analytics dashboard coming soon</p>
+          <div className="bg-white rounded-xl shadow-sm border p-12 text-center text-gray-400">
+            <div className="text-5xl mb-4">📈</div>
+            <p className="text-lg font-medium">Analytics dashboard coming soon</p>
           </div>
         )}
       </div>

@@ -53,6 +53,19 @@ const shopSchema = new mongoose.Schema(
       twitter: String,
       instagram: String,
     },
+    publishedProducts: {
+      type: Number,
+      default: 0,
+    },
+    shopStatus: {
+      type: String,
+      enum: ['pending', 'active', 'suspended'],
+      default: 'pending',
+    },
+    hasMetRequirements: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

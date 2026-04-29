@@ -48,6 +48,10 @@ const productSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    isPublished: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
