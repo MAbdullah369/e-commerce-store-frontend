@@ -1,5 +1,5 @@
 import { useState, useContext } from 'react'
-import { useNavigate, Link, Navigate } from 'react-router-dom'
+import { useNavigate, Link, Navigate, useLocation } from 'react-router-dom'
 import { AuthContext } from '../context/AuthContext'
 
 export default function Login() {
@@ -9,9 +9,12 @@ export default function Login() {
   const [success, setSuccess] = useState('')
   const { login, loading, user } = useContext(AuthContext)
   const navigate = useNavigate()
+  const location = useLocation()
 
-  // If already logged in, redirect based on role
+  // If already logged in, redirect to the right place immediately
   if (user) {
+    const destination = location.state?.from?.pathname
+    if (destination) return <Navigate to={destination} replace />
     if (user.role === 'admin') return <Navigate to="/admin" replace />
     if (user.role === 'seller') return <Navigate to="/seller" replace />
     return <Navigate to="/" replace />
@@ -21,14 +24,26 @@ export default function Login() {
     e.preventDefault()
     setLocalError('')
     setSuccess('')
+
     try {
+      // login() now returns the user object directly (not response.data)
       const loggedInUser = await login(email, password)
+
       setSuccess('Login successful! Redirecting...')
+
+      // Redirect to where they tried to go, or role-appropriate home
+      const destination = location.state?.from?.pathname
       setTimeout(() => {
-        if (loggedInUser?.role === 'admin') navigate('/admin')
-        else if (loggedInUser?.role === 'seller') navigate('/seller')
-        else navigate('/')
-      }, 1000)
+        if (destination) {
+          navigate(destination, { replace: true })
+        } else if (loggedInUser.role === 'admin') {
+          navigate('/admin', { replace: true })
+        } else if (loggedInUser.role === 'seller') {
+          navigate('/seller', { replace: true })
+        } else {
+          navigate('/', { replace: true })
+        }
+      }, 800)
     } catch (err) {
       setLocalError(err.response?.data?.error || 'Login failed. Please check your credentials.')
     }
@@ -44,12 +59,12 @@ export default function Login() {
 
           {localError && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
-              {localError}
+              ⚠ {localError}
             </div>
           )}
           {success && (
             <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4 text-sm">
-              {success}
+              ✓ {success}
             </div>
           )}
 
@@ -63,6 +78,7 @@ export default function Login() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder="you@example.com"
+                autoComplete="email"
               />
             </div>
 
@@ -75,13 +91,14 @@ export default function Login() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 placeholder="••••••••"
+                autoComplete="current-password"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-60"
+              className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
@@ -95,8 +112,8 @@ export default function Login() {
           {/* Demo Credentials */}
           <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
             <p className="text-sm font-semibold mb-2 text-blue-900">Demo Credentials</p>
-            <p className="text-xs text-gray-600">🛒 Buyer: buyer1@ecommerce.com / Buyer123@</p>
-            <p className="text-xs text-gray-600">🏪 Seller: seller1@ecommerce.com / Seller123@</p>
+            <p className="text-xs text-gray-600 mb-1">🛒 Buyer: buyer1@ecommerce.com / Buyer123@</p>
+            <p className="text-xs text-gray-600 mb-1">🏪 Seller: seller1@ecommerce.com / Seller123@</p>
             <p className="text-xs text-gray-600">⚙️ Admin: admin@ecommerce.com / Admin123@</p>
           </div>
         </div>
@@ -105,27 +122,27 @@ export default function Login() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white rounded-xl shadow p-6">
             <h3 className="text-lg font-bold mb-3 text-blue-600">🛒 Buyer</h3>
-            <p className="text-xs text-gray-500 font-semibold mb-2">After Login:</p>
+            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-2">After Login</p>
             <p className="text-sm text-gray-600">✓ Add items to cart</p>
             <p className="text-sm text-gray-600">✓ Place and track orders</p>
             <p className="text-sm text-gray-600">✓ Manage wishlist</p>
-            <p className="text-xs text-gray-500 font-semibold mt-3 mb-1">Without Login:</p>
+            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mt-3 mb-1">Without Login</p>
             <p className="text-sm text-red-500">✗ Cannot buy or checkout</p>
           </div>
 
           <div className="bg-white rounded-xl shadow p-6">
             <h3 className="text-lg font-bold mb-3 text-green-600">🏪 Seller</h3>
-            <p className="text-xs text-gray-500 font-semibold mb-2">After Login:</p>
+            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-2">After Login</p>
             <p className="text-sm text-gray-600">✓ Access seller dashboard</p>
             <p className="text-sm text-gray-600">✓ Create & manage shop</p>
             <p className="text-sm text-gray-600">✓ List and sell products</p>
-            <p className="text-xs text-gray-500 font-semibold mt-3 mb-1">Requirement:</p>
-            <p className="text-sm text-yellow-600">⚠ Must publish 3+ products to activate shop</p>
+            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mt-3 mb-1">Requirement</p>
+            <p className="text-sm text-amber-600">⚠ Must publish 3+ products to activate shop</p>
           </div>
 
           <div className="bg-white rounded-xl shadow p-6">
             <h3 className="text-lg font-bold mb-3 text-purple-600">⚙️ Admin</h3>
-            <p className="text-xs text-gray-500 font-semibold mb-2">After Login:</p>
+            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-2">After Login</p>
             <p className="text-sm text-gray-600">✓ Access admin dashboard</p>
             <p className="text-sm text-gray-600">✓ Manage users & sellers</p>
             <p className="text-sm text-gray-600">✓ Manage categories & products</p>
@@ -143,7 +160,6 @@ export default function Login() {
             <p className="text-red-600">✗ Cannot checkout or place orders</p>
           </div>
         </div>
-
       </div>
     </div>
   )

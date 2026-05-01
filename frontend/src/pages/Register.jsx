@@ -15,7 +15,7 @@ export default function Register() {
   const { register, loading, user } = useContext(AuthContext)
   const navigate = useNavigate()
 
-  // Already logged in
+  // Already logged in → redirect to their area
   if (user) {
     if (user.role === 'admin') return <Navigate to="/admin" replace />
     if (user.role === 'seller') return <Navigate to="/seller" replace />
@@ -42,12 +42,21 @@ export default function Register() {
     }
 
     try {
-      await register(formData.name, formData.email, formData.password, formData.confirmPassword, formData.role)
+      // register() now returns the user object directly
+      const newUser = await register(
+        formData.name,
+        formData.email,
+        formData.password,
+        formData.confirmPassword,
+        formData.role
+      )
+
       setSuccess('Account created successfully! Redirecting...')
+
       setTimeout(() => {
-        if (formData.role === 'seller') navigate('/seller')
-        else navigate('/')
-      }, 1500)
+        if (newUser.role === 'seller') navigate('/seller', { replace: true })
+        else navigate('/', { replace: true })
+      }, 1000)
     } catch (err) {
       setLocalError(err.response?.data?.error || 'Registration failed. Please try again.')
     }
@@ -60,12 +69,12 @@ export default function Register() {
 
         {localError && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
-            {localError}
+            ⚠ {localError}
           </div>
         )}
         {success && (
           <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4 text-sm">
-            {success}
+            ✓ {success}
           </div>
         )}
 
@@ -93,6 +102,7 @@ export default function Register() {
               onChange={handleChange}
               required
               placeholder="you@example.com"
+              autoComplete="email"
             />
           </div>
 
@@ -106,6 +116,7 @@ export default function Register() {
               onChange={handleChange}
               required
               placeholder="Min. 6 characters"
+              autoComplete="new-password"
             />
           </div>
 
@@ -119,6 +130,7 @@ export default function Register() {
               onChange={handleChange}
               required
               placeholder="Repeat password"
+              autoComplete="new-password"
             />
           </div>
 
@@ -134,7 +146,7 @@ export default function Register() {
               <option value="seller">🏪 Seller — Create a shop and sell products</option>
             </select>
             {formData.role === 'seller' && (
-              <p className="text-xs text-amber-600 mt-1">
+              <p className="text-xs text-amber-600 mt-1.5 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">
                 ⚠ After registering, you must create your shop and publish at least 3 products to activate it.
               </p>
             )}
@@ -146,7 +158,7 @@ export default function Register() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-60"
+            className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {loading ? 'Creating account...' : 'Create Account'}
           </button>

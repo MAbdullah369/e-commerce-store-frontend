@@ -19,7 +19,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Please provide a password'],
       minlength: 6,
-      select: false, // Don't return password by default
+      select: false,
     },
     phone: {
       type: String,
@@ -48,22 +48,15 @@ const userSchema = new mongoose.Schema(
 );
 
 // Hash password before saving
-userSchema.pre('save', async function (next) {
-  // Only hash if password is new or modified
-  if (!this.isModified('password')) {
-    return next();
-  }
+// ✅ async hooks in Mongoose 6+ must NOT use next() — Mongoose awaits the promise automatically
+userSchema.pre('save', async function () {
+  if (!this.isModified('password')) return;
 
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (err) {
-    next(err);
-  }
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
 });
 
-// Method to compare password
+// Compare entered password with stored hash
 userSchema.methods.comparePassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };

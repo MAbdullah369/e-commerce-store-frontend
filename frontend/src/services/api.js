@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-// Create axios instance with base URL
+// Create axios instance
 const API = axios.create({
   baseURL: 'http://localhost:5000/api',
   headers: {
@@ -8,7 +8,7 @@ const API = axios.create({
   },
 });
 
-// Add token to requests
+// Attach JWT token to every request
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
@@ -17,20 +17,23 @@ API.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle responses
+// Global 401 handler — token expired or invalid
 API.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      // Only redirect if not already on login page
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
 );
 
-// ===== AUTH ENDPOINTS =====
+// ===== AUTH =====
 export const authAPI = {
   register: (data) => API.post('/auth/register', data),
   login: (data) => API.post('/auth/login', data),
@@ -38,7 +41,7 @@ export const authAPI = {
   logout: () => API.post('/auth/logout'),
 };
 
-// ===== USER ENDPOINTS =====
+// ===== USER =====
 export const userAPI = {
   getProfile: () => API.get('/users/profile'),
   updateProfile: (data) => API.put('/users/profile', data),
@@ -47,7 +50,7 @@ export const userAPI = {
   deleteUser: (userId) => API.delete(`/users/${userId}`),
 };
 
-// ===== PRODUCT ENDPOINTS =====
+// ===== PRODUCTS =====
 export const productAPI = {
   getAllProducts: (params) => API.get('/products', { params }),
   getProductById: (id) => API.get(`/products/${id}`),
@@ -58,7 +61,7 @@ export const productAPI = {
   getProductsByCategory: (categoryId) => API.get(`/products/category/${categoryId}`),
 };
 
-// ===== ORDER ENDPOINTS =====
+// ===== ORDERS =====
 export const orderAPI = {
   getBuyerOrders: () => API.get('/orders'),
   createOrder: (data) => API.post('/orders', data),
@@ -68,7 +71,7 @@ export const orderAPI = {
   getAllOrders: () => API.get('/orders/admin/all'),
 };
 
-// ===== CART ENDPOINTS =====
+// ===== CART =====
 export const cartAPI = {
   getCart: () => API.get('/buyers/cart'),
   addToCart: (data) => API.post('/buyers/cart/add', data),
@@ -77,14 +80,14 @@ export const cartAPI = {
   clearCart: () => API.delete('/buyers/cart/clear'),
 };
 
-// ===== WISHLIST ENDPOINTS =====
+// ===== WISHLIST =====
 export const wishlistAPI = {
   getWishlist: () => API.get('/buyers/wishlist'),
   addToWishlist: (productId) => API.post('/buyers/wishlist/add', { productId }),
   removeFromWishlist: (productId) => API.delete(`/buyers/wishlist/remove/${productId}`),
 };
 
-// ===== PAYMENT ENDPOINTS =====
+// ===== PAYMENTS =====
 export const paymentAPI = {
   createPayment: (data) => API.post('/payments', data),
   processPayment: (paymentId) => API.post(`/payments/${paymentId}/process`),
@@ -94,21 +97,41 @@ export const paymentAPI = {
   getUserPayments: () => API.get('/payments/user/history'),
 };
 
-// ===== SELLER ENDPOINTS =====
+// ===== SELLER =====
+// These were missing — SellerDashboard.jsx needs them
 export const sellerAPI = {
+  // Shop management
+  getMyShop: () => API.get('/sellers/shop'),           // GET seller's own shop
+  createShop: (data) => API.post('/sellers/shop', data), // POST create shop
+  updateShop: (data) => API.put('/sellers/shop', data),  // PUT update shop
+
+  // Stats & data
+  getSellerStats: () => API.get('/sellers/stats'),
+  getSellerProducts: () => API.get('/sellers/products'),
+  getSellerOrders: () => API.get('/sellers/orders'),
+
+  // Product CRUD (seller scope)
+  createProduct: (data) => API.post('/sellers/products', data),
+  updateProduct: (id, data) => API.put(`/sellers/products/${id}`, data),
+  deleteProduct: (id) => API.delete(`/sellers/products/${id}`),
+  publishProduct: (id) => API.patch(`/sellers/products/${id}/publish`),
+
+  // Legacy / misc
   registerAsSeller: (data) => API.post('/sellers/register', data),
   getSellerProfile: () => API.get('/sellers/profile'),
   updateSellerProfile: (data) => API.put('/sellers/profile', data),
-  getSellerProducts: () => API.get('/sellers/products'),
   getSellerSales: () => API.get('/sellers/sales'),
   getAllSellers: () => API.get('/sellers'),
   getSellerById: (sellerId) => API.get(`/sellers/${sellerId}`),
 };
 
-// ===== ADMIN ENDPOINTS =====
+// ===== ADMIN =====
+// Used directly with `api.get/post/patch/delete` in AdminDashboard
 export const adminAPI = {
   markReviewHelpful: (reviewId) => API.post(`/admin/reviews/${reviewId}/helpful`),
   deleteReview: (reviewId) => API.delete(`/admin/reviews/${reviewId}`),
 };
 
+// Export raw instance so AdminDashboard can call api.get('/admin/...')
+export { API as api };
 export default API;

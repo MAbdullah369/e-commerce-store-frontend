@@ -4,16 +4,27 @@ import { authAPI } from '../services/api';
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
+  // Start with loading=true so the app waits before rendering protected routes
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('token'));
-  const [loading, setLoading] = useState(false);
+  const [token, setToken] = useState(null);
+  const [loading, setLoading] = useState(true); // true on first mount
   const [error, setError] = useState(null);
 
-  // Load user from localStorage on mount
+  // On mount: restore session from localStorage
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+    try {
+      const storedToken = localStorage.getItem('token');
+      const storedUser = localStorage.getItem('user');
+      if (storedToken && storedUser) {
+        setToken(storedToken);
+        setUser(JSON.parse(storedUser));
+      }
+    } catch {
+      // Corrupted localStorage — clear it
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+    } finally {
+      setLoading(false); // Done initializing — app can now render
     }
   }, []);
 
@@ -22,14 +33,16 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       setError(null);
       const response = await authAPI.register({ name, email, password, confirmPassword, role });
+
+      // Backend returns { token, user } — extract both
       const { token: newToken, user: newUser } = response.data;
-      
+
       localStorage.setItem('token', newToken);
       localStorage.setItem('user', JSON.stringify(newUser));
       setToken(newToken);
       setUser(newUser);
-      
-      return response.data;
+
+      return newUser; // Return the user object so callers can read .role
     } catch (err) {
       const errorMsg = err.response?.data?.error || 'Registration failed';
       setError(errorMsg);
@@ -44,14 +57,16 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       setError(null);
       const response = await authAPI.login({ email, password });
+
+      // Backend returns { token, user } — extract both
       const { token: newToken, user: newUser } = response.data;
-      
+
       localStorage.setItem('token', newToken);
       localStorage.setItem('user', JSON.stringify(newUser));
       setToken(newToken);
       setUser(newUser);
-      
-      return response.data;
+
+      return newUser; // Return the user object so callers can read .role
     } catch (err) {
       const errorMsg = err.response?.data?.error || 'Login failed';
       setError(errorMsg);
@@ -66,6 +81,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('user');
     setToken(null);
     setUser(null);
+    setError(null);
   }, []);
 
   const isAuthenticated = !!token && !!user;

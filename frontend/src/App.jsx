@@ -1,8 +1,10 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { CartProvider } from './context/CartContext'
 import Navbar from './components/Navbar'
 import ProtectedRoute from './components/ProtectedRoute'
+
+// Pages
 import Home from './pages/Home'
 import Products from './pages/Products'
 import ProductDetail from './pages/ProductDetail'
@@ -20,44 +22,59 @@ import NotFound from './pages/NotFound'
 
 function App() {
   return (
-    <Router>
+    <BrowserRouter>
       <AuthProvider>
         <CartProvider>
-          <Navbar />
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<Home />} />
-            <Route path="/products" element={<Products />} />
-            <Route path="/products/:id" element={<ProductDetail />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+          <div className="flex flex-col min-h-screen">
+            <Navbar />
 
-            {/* Protected Routes - All users (logged in) */}
-            <Route element={<ProtectedRoute />}>
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/cart" element={<Cart />} />
-              <Route path="/checkout" element={<Checkout />} />
-              <Route path="/orders" element={<Orders />} />
-              <Route path="/orders/:id" element={<OrderDetail />} />
-              <Route path="/wishlist" element={<Wishlist />} />
-            </Route>
+            <main className="flex-grow">
+              <Routes>
+                {/* ── PUBLIC ── */}
+                <Route path="/" element={<Home />} />
+                <Route path="/products" element={<Products />} />
+                <Route path="/products/:id" element={<ProductDetail />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
 
-            {/* Seller Only Routes */}
-            <Route element={<ProtectedRoute allowedRoles={['seller']} />}>
-              <Route path="/seller/*" element={<SellerDashboard />} />
-            </Route>
+                {/* ── BUYER (any logged-in user) ── */}
+                <Route path="/cart" element={
+                  <ProtectedRoute><Cart /></ProtectedRoute>
+                } />
+                <Route path="/checkout" element={
+                  <ProtectedRoute><Checkout /></ProtectedRoute>
+                } />
+                <Route path="/orders" element={
+                  <ProtectedRoute><Orders /></ProtectedRoute>
+                } />
+                <Route path="/orders/:id" element={
+                  <ProtectedRoute><OrderDetail /></ProtectedRoute>
+                } />
+                <Route path="/wishlist" element={
+                  <ProtectedRoute><Wishlist /></ProtectedRoute>
+                } />
+                <Route path="/profile" element={
+                  <ProtectedRoute><Profile /></ProtectedRoute>
+                } />
 
-            {/* Admin Only Routes */}
-            <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-              <Route path="/admin/*" element={<AdminDashboard />} />
-            </Route>
+                {/* ── SELLER ONLY ── */}
+                <Route path="/seller/*" element={
+                  <ProtectedRoute requiredRole="seller"><SellerDashboard /></ProtectedRoute>
+                } />
 
-            {/* 404 Route */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+                {/* ── ADMIN ONLY ── */}
+                <Route path="/admin/*" element={
+                  <ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>
+                } />
+
+                {/* ── 404 ── */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </main>
+          </div>
         </CartProvider>
       </AuthProvider>
-    </Router>
+    </BrowserRouter>
   )
 }
 

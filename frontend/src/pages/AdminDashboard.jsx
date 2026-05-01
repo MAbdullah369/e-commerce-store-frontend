@@ -1,7 +1,7 @@
 import { useState, useEffect, useContext } from 'react'
 import { Navigate } from 'react-router-dom'
 import { AuthContext } from '../context/AuthContext'
-import { api } from '../services/api'
+import API from '../services/api'
 
 export default function AdminDashboard() {
   const { user, loading: authLoading } = useContext(AuthContext)
@@ -35,7 +35,7 @@ export default function AdminDashboard() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true)
-      const response = await api.get('/admin/dashboard')
+      const response = await API.get('/admin/dashboard')
       setDashboardData(response.data.stats)
       setError(null)
     } catch (err) {
@@ -49,7 +49,7 @@ export default function AdminDashboard() {
   const fetchActiveUsers = async () => {
     try {
       setLoading(true)
-      const response = await api.get('/admin/users/active')
+      const response = await API.get('/admin/users/active')
       setUsers(response.data.users || response.data || [])
       setError(null)
     } catch (err) {
@@ -62,7 +62,7 @@ export default function AdminDashboard() {
   const fetchSellers = async () => {
     try {
       setLoading(true)
-      const response = await api.get('/admin/sellers')
+      const response = await API.get('/admin/sellers')
       setSellers(response.data.sellers || response.data || [])
       setError(null)
     } catch (err) {
@@ -75,7 +75,7 @@ export default function AdminDashboard() {
   const fetchCategories = async () => {
     try {
       setLoading(true)
-      const response = await api.get('/admin/categories')
+      const response = await API.get('/admin/categories')
       setCategories(response.data.categories || response.data || [])
       setError(null)
     } catch (err) {
@@ -88,7 +88,7 @@ export default function AdminDashboard() {
   const fetchProducts = async () => {
     try {
       setLoading(true)
-      const response = await api.get('/admin/products')
+      const response = await API.get('/admin/products')
       setProducts(response.data.products || response.data || [])
       setError(null)
     } catch (err) {
@@ -109,7 +109,7 @@ export default function AdminDashboard() {
 
   const handleApproveSeller = async (shopId) => {
     try {
-      await api.patch(`/admin/sellers/${shopId}/approve`)
+      await API.patch(`/admin/sellers/${shopId}/approve`)
       alert('Seller approved successfully')
       fetchSellers()
     } catch (err) {
@@ -119,7 +119,7 @@ export default function AdminDashboard() {
 
   const handleSuspendSeller = async (shopId) => {
     try {
-      await api.patch(`/admin/sellers/${shopId}/suspend`)
+      await API.patch(`/admin/sellers/${shopId}/suspend`)
       alert('Seller suspended successfully')
       fetchSellers()
     } catch (err) {
@@ -130,7 +130,7 @@ export default function AdminDashboard() {
   const handleDeactivateUser = async (userId) => {
     if (!window.confirm('Deactivate this user?')) return
     try {
-      await api.patch(`/admin/users/${userId}/deactivate`)
+      await API.patch(`/admin/users/${userId}/deactivate`)
       alert('User deactivated successfully')
       fetchActiveUsers()
     } catch (err) {
@@ -141,7 +141,7 @@ export default function AdminDashboard() {
   const handleAddCategory = async (e) => {
     e.preventDefault()
     try {
-      await api.post('/admin/categories', newCategory)
+      await API.post('/admin/categories', newCategory)
       alert('Category added successfully')
       setNewCategory({ name: '', description: '', image: '' })
       setShowAddCategory(false)
@@ -154,7 +154,7 @@ export default function AdminDashboard() {
   const handleDeleteCategory = async (categoryId) => {
     if (!window.confirm('Delete this category?')) return
     try {
-      await api.delete(`/admin/categories/${categoryId}`)
+      await API.delete(`/admin/categories/${categoryId}`)
       alert('Category deleted')
       fetchCategories()
     } catch (err) {
@@ -165,7 +165,7 @@ export default function AdminDashboard() {
   const handleDeleteProduct = async (productId) => {
     if (!window.confirm('Delete this product?')) return
     try {
-      await api.delete(`/admin/products/${productId}`)
+      await API.delete(`/admin/products/${productId}`)
       alert('Product deleted')
       fetchProducts()
     } catch (err) {

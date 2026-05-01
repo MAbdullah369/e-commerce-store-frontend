@@ -2,7 +2,6 @@ const User = require('../models/User');
 
 const userSeeder = async () => {
   try {
-    // Check if sample users exist
     const existingUsers = await User.countDocuments({ role: 'buyer' });
     if (existingUsers > 0) {
       console.log('Sample users already exist');
@@ -38,7 +37,6 @@ const userSeeder = async () => {
           zipCode: '60601',
           country: 'USA',
         },
-        isSeller: true,
         isActive: true,
       },
       {
@@ -58,7 +56,14 @@ const userSeeder = async () => {
       },
     ];
 
-    await User.insertMany(users);
+    // ✅ Use save() on each user — NOT insertMany() — so the pre-save
+    //    hook runs and bcrypt hashes the password before storing it.
+    //    insertMany() skips all Mongoose middleware.
+    for (const userData of users) {
+      const user = new User(userData);
+      await user.save();
+    }
+
     console.log('Sample users created successfully');
   } catch (error) {
     console.error('Error creating users:', error);

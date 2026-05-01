@@ -1,119 +1,156 @@
-import React, { createContext, useState, useCallback, useEffect } from 'react';
-import { cartAPI, wishlistAPI } from '../services/api';
+import { createContext, useState, useContext, useCallback } from 'react'
+import { cartAPI, wishlistAPI } from '../services/api'
+import { AuthContext } from './AuthContext'
 
-export const CartContext = createContext();
+export const CartContext = createContext()
 
 export const CartProvider = ({ children }) => {
-  const [cart, setCart] = useState(null);
-  const [wishlist, setWishlist] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const { user } = useContext(AuthContext)
+
+  const [cart, setCart] = useState(null)        // { items: [], totalPrice: 0 }
+  const [wishlist, setWishlist] = useState(null) // { items: [] }
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  // ── CART ──────────────────────────────────────────
 
   const fetchCart = useCallback(async () => {
+    if (!user) return
     try {
-      setLoading(true);
-      const response = await cartAPI.getCart();
-      setCart(response.data);
+      setLoading(true)
+      const res = await cartAPI.getCart()
+      setCart(res.data)
+      setError('')
     } catch (err) {
-      console.error('Error fetching cart:', err);
+      setError('Failed to load cart')
+      console.error(err)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, []);
+  }, [user])
 
-  const fetchWishlist = useCallback(async () => {
+  const addToCart = useCallback(async (productId, quantity = 1) => {
     try {
-      const response = await wishlistAPI.getWishlist();
-      setWishlist(response.data);
+      setLoading(true)
+      const res = await cartAPI.addToCart({ productId, quantity })
+      setCart(res.data)
+      setError('')
+      return res.data
     } catch (err) {
-      console.error('Error fetching wishlist:', err);
+      setError(err.response?.data?.error || 'Failed to add to cart')
+      throw err
+    } finally {
+      setLoading(false)
     }
-  }, []);
-
-  const addToCart = useCallback(async (productId, quantity) => {
-    try {
-      const response = await cartAPI.addToCart({ productId, quantity });
-      setCart(response.data.cart);
-      return response.data;
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to add to cart');
-      throw err;
-    }
-  }, []);
-
-  const removeFromCart = useCallback(async (productId) => {
-    try {
-      const response = await cartAPI.removeFromCart(productId);
-      setCart(response.data.cart);
-      return response.data;
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to remove from cart');
-      throw err;
-    }
-  }, []);
+  }, [])
 
   const updateCartItem = useCallback(async (productId, quantity) => {
     try {
-      const response = await cartAPI.updateCartItem({ productId, quantity });
-      setCart(response.data.cart);
-      return response.data;
+      setLoading(true)
+      const res = await cartAPI.updateCartItem({ productId, quantity })
+      setCart(res.data)
+      setError('')
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to update cart');
-      throw err;
+      setError(err.response?.data?.error || 'Failed to update cart')
+      console.error(err)
+    } finally {
+      setLoading(false)
     }
-  }, []);
+  }, [])
+
+  const removeFromCart = useCallback(async (productId) => {
+    try {
+      setLoading(true)
+      const res = await cartAPI.removeFromCart(productId)
+      setCart(res.data)
+      setError('')
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to remove item')
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   const clearCart = useCallback(async () => {
     try {
-      const response = await cartAPI.clearCart();
-      setCart(response.data.cart);
-      return response.data;
+      setLoading(true)
+      await cartAPI.clearCart()
+      setCart(null)
+      setError('')
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to clear cart');
-      throw err;
+      setError('Failed to clear cart')
+      console.error(err)
+    } finally {
+      setLoading(false)
     }
-  }, []);
+  }, [])
+
+  // ── WISHLIST ──────────────────────────────────────
+
+  const fetchWishlist = useCallback(async () => {
+    if (!user) return
+    try {
+      setLoading(true)
+      const res = await wishlistAPI.getWishlist()
+      setWishlist(res.data)
+      setError('')
+    } catch (err) {
+      setError('Failed to load wishlist')
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }, [user])
 
   const addToWishlist = useCallback(async (productId) => {
     try {
-      const response = await wishlistAPI.addToWishlist(productId);
-      setWishlist(response.data.wishlist);
-      return response.data;
+      setLoading(true)
+      const res = await wishlistAPI.addToWishlist(productId)
+      setWishlist(res.data)
+      setError('')
+      return res.data
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to add to wishlist');
-      throw err;
+      setError(err.response?.data?.error || 'Failed to add to wishlist')
+      throw err
+    } finally {
+      setLoading(false)
     }
-  }, []);
+  }, [])
 
   const removeFromWishlist = useCallback(async (productId) => {
     try {
-      const response = await wishlistAPI.removeFromWishlist(productId);
-      setWishlist(response.data.wishlist);
-      return response.data;
+      setLoading(true)
+      const res = await wishlistAPI.removeFromWishlist(productId)
+      setWishlist(res.data)
+      setError('')
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to remove from wishlist');
-      throw err;
+      setError(err.response?.data?.error || 'Failed to remove from wishlist')
+      console.error(err)
+    } finally {
+      setLoading(false)
     }
-  }, []);
+  }, [])
 
   return (
-    <CartContext.Provider
-      value={{
-        cart,
-        wishlist,
-        loading,
-        error,
-        fetchCart,
-        fetchWishlist,
-        addToCart,
-        removeFromCart,
-        updateCartItem,
-        clearCart,
-        addToWishlist,
-        removeFromWishlist,
-      }}
-    >
+    <CartContext.Provider value={{
+      // Cart
+      cart,
+      fetchCart,
+      addToCart,
+      updateCartItem,
+      removeFromCart,
+      clearCart,
+      // Wishlist
+      wishlist,
+      fetchWishlist,
+      addToWishlist,
+      removeFromWishlist,
+      // State
+      loading,
+      error,
+    }}>
       {children}
     </CartContext.Provider>
-  );
-};
+  )
+}
