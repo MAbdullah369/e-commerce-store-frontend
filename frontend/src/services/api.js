@@ -100,31 +100,32 @@ export const paymentAPI = {
 // ===== SELLER =====
 // These were missing — SellerDashboard.jsx needs them
 export const sellerAPI = {
-  // Shop management
-  getMyShop: () => API.get('/sellers/shop'),           // GET seller's own shop
-  createShop: (data) => API.post('/sellers/shop', data), // POST create shop
-  updateShop: (data) => API.put('/sellers/shop', data),  // PUT update shop
-
-  // Stats & data
-  getSellerStats: () => API.get('/sellers/stats'),
-  getSellerProducts: () => API.get('/sellers/products'),
-  getSellerOrders: () => API.get('/sellers/orders'),
-
-  // Product CRUD (seller scope)
-  createProduct: (data) => API.post('/sellers/products', data),
-  updateProduct: (id, data) => API.put(`/sellers/products/${id}`, data),
-  deleteProduct: (id) => API.delete(`/sellers/products/${id}`),
-  publishProduct: (id) => API.patch(`/sellers/products/${id}/publish`),
-
-  // Legacy / misc
-  registerAsSeller: (data) => API.post('/sellers/register', data),
-  getSellerProfile: () => API.get('/sellers/profile'),
+  // Shop
+  getMyShop:    ()       => API.get('/sellers/shop'),
+  createShop:   (data)   => API.post('/sellers/shop', data),
+  updateShop:   (data)   => API.put('/sellers/shop', data),
+  getShopStatus: ()      => API.get('/sellers/shop/status'),
+ 
+  // Dashboard stats
+  getSellerStats:   ()   => API.get('/sellers/stats'),
+  getSellerOrders:  ()   => API.get('/sellers/orders'),
+  getSellerSales:   ()   => API.get('/sellers/sales'),
+ 
+  // Profile (legacy)
+  getSellerProfile:    ()     => API.get('/sellers/profile'),
   updateSellerProfile: (data) => API.put('/sellers/profile', data),
-  getSellerSales: () => API.get('/sellers/sales'),
-  getAllSellers: () => API.get('/sellers'),
+ 
+  // Products
+  getSellerProducts: ()           => API.get('/sellers/products'),
+  createProduct:     (data)       => API.post('/sellers/products/create', data),
+  updateProduct:     (id, data)   => API.put(`/sellers/products/${id}`, data),
+  deleteProduct:     (id)         => API.delete(`/sellers/products/${id}`),
+  publishProduct:    (id)         => API.patch(`/sellers/products/${id}/publish`),
+ 
+  // Public
+  getAllSellers:  ()         => API.get('/sellers'),
   getSellerById: (sellerId) => API.get(`/sellers/${sellerId}`),
 };
-
 // ===== ADMIN =====
 // Used directly with `api.get/post/patch/delete` in AdminDashboard
 export const adminAPI = {

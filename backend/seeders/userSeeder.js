@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const Shops = require('../models/Shops');
 
 const userSeeder = async () => {
   try {
@@ -56,12 +57,30 @@ const userSeeder = async () => {
       },
     ];
 
-    // ✅ Use save() on each user — NOT insertMany() — so the pre-save
-    //    hook runs and bcrypt hashes the password before storing it.
-    //    insertMany() skips all Mongoose middleware.
+    // ✅ Use save() — NOT insertMany() — so pre-save hook hashes passwords
+    const createdUsers = [];
     for (const userData of users) {
       const user = new User(userData);
       await user.save();
+      createdUsers.push(user);
+    }
+
+    // ✅ Create a shop for the seeded seller so they can use the dashboard immediately
+    const sellerUser = createdUsers.find(u => u.role === 'seller');
+    if (sellerUser) {
+      const existingShop = await Shops.findOne({ seller: sellerUser._id });
+      if (!existingShop) {
+        await new Shops({
+          seller: sellerUser._id,
+          shopName: "Sarah's Store",
+          description: 'Quality products at great prices',
+          shopStatus: 'pending',
+          hasMetRequirements: false,
+          publishedProducts: 0,
+          isActive: true,
+        }).save();
+        console.log("Seller shop created for Sarah Seller");
+      }
     }
 
     console.log('Sample users created successfully');

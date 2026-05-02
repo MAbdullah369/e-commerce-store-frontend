@@ -52,16 +52,23 @@ export default function SellerDashboard() {
           setStats(statsRes.data)
         } else if (activeTab === 'products') {
           const productsRes = await sellerAPI.getSellerProducts()
-          setProducts(productsRes.data || [])
+          // Backend returns array directly from our fixed sellerController
+          const productList = Array.isArray(productsRes.data)
+            ? productsRes.data
+            : productsRes.data?.products || []
+          setProducts(productList)
         } else if (activeTab === 'orders') {
           const ordersRes = await sellerAPI.getSellerOrders()
-          setOrders(ordersRes.data || [])
+          setOrders(Array.isArray(ordersRes.data) ? ordersRes.data : ordersRes.data?.orders || [])
         }
       } else if (shopRes.data && shopRes.data.shopStatus === 'pending') {
-        // Load products to show progress
+        // Load ALL products (draft + published) to show progress
         try {
           const productsRes = await sellerAPI.getSellerProducts()
-          setProducts(productsRes.data || [])
+          const productList = Array.isArray(productsRes.data)
+            ? productsRes.data
+            : productsRes.data?.products || []
+          setProducts(productList)
         } catch (_) {}
       }
       setError('')
@@ -209,7 +216,18 @@ export default function SellerDashboard() {
   // ── Step 2: Shop exists but pending — needs 3 products ──
   if (shop && shop.shopStatus === 'pending') {
     const published = products.filter(p => p.isPublished).length
+    const total = products.length
     const needed = Math.max(0, 3 - published)
+    const progressPct = Math.min(100, (published / 3) * 100)
+
+    const handlePublish = async (productId) => {
+      try {
+        await sellerAPI.publishProduct(productId)
+        fetchShopAndData() // refresh to update counts + check activation
+      } catch (err) {
+        alert(err.response?.data?.error || 'Failed to publish product')
+      }
+    }
 
     return (
       <div className="bg-gray-50 min-h-screen py-12">
@@ -227,32 +245,54 @@ export default function SellerDashboard() {
                 <p className="font-semibold text-amber-900">Published Products</p>
                 <span className="text-2xl font-bold text-amber-700">{published} / 3</span>
               </div>
-              <div className="w-full bg-amber-200 rounded-full h-3">
+              {/* Progress bar — width driven by actual published count */}
+              <div className="w-full bg-amber-200 rounded-full h-3 overflow-hidden">
                 <div
-                  className="bg-amber-500 h-3 rounded-full transition-all"
-                  style={{ width: `${Math.min(100, (published / 3) * 100)}%` }}
+                  className="bg-amber-500 h-3 rounded-full transition-all duration-500"
+                  style={{ width: `${progressPct}%` }}
                 />
               </div>
-              {needed > 0 && (
-                <p className="text-sm text-amber-700 mt-2">
-                  Publish {needed} more product{needed > 1 ? 's' : ''} to activate your shop
-                </p>
-              )}
+              <p className="text-sm text-amber-700 mt-2">
+                {needed > 0
+                  ? `Publish ${needed} more product${needed > 1 ? 's' : ''} to activate your shop`
+                  : '✓ Requirements met! Activating your shop...'}
+              </p>
             </div>
 
-            {products.length > 0 && (
+            {/* Product list */}
+            {total > 0 ? (
               <div className="mb-6">
-                <p className="font-medium text-gray-700 mb-3">Your products:</p>
+                <p className="font-medium text-gray-700 mb-3">Your products ({total}):</p>
                 <div className="space-y-2">
                   {products.map(p => (
-                    <div key={p._id} className="flex justify-between items-center py-2 border-b last:border-b-0">
-                      <span className="text-gray-700">{p.name}</span>
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${p.isPublished ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                        {p.isPublished ? '✓ Published' : 'Draft'}
-                      </span>
+                    <div key={p._id} className="flex justify-between items-center py-3 px-4 border rounded-xl bg-gray-50">
+                      <span className="text-gray-800 text-sm font-medium">{p.name}</span>
+                      <div className="flex items-center gap-3">
+                        {p.isPublished ? (
+                          <span className="text-xs px-2.5 py-1 rounded-full font-semibold bg-green-100 text-green-700">
+                            ✓ Published
+                          </span>
+                        ) : (
+                          <>
+                            <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-gray-200 text-gray-500">
+                              Draft
+                            </span>
+                            <button
+                              onClick={() => handlePublish(p._id)}
+                              className="text-xs px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition"
+                            >
+                              Publish
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
+              </div>
+            ) : (
+              <div className="mb-6 text-center py-6 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                <p className="text-gray-500 text-sm">No products yet. Add your first product below.</p>
               </div>
             )}
 
