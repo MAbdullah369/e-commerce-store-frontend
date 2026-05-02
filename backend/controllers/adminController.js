@@ -18,11 +18,15 @@ exports.getDashboard = async (req, res, next) => {
     const totalRevenue = await Order.aggregate([
       { $group: { _id: null, total: { $sum: '$totalAmount' } } },
     ]);
+    const activeUsers = await User.countDocuments({ isActive: true });
+    const inactiveUsers = await User.countDocuments({ isActive: false });
 
     res.json({
       message: 'Dashboard data fetched',
       stats: {
         totalUsers,
+        activeUsers,
+        inactiveUsers,
         activeSellers,
         totalCategories,
         totalProducts,
@@ -53,6 +57,36 @@ exports.getActiveUsers = async (req, res, next) => {
 
     res.json({
       message: 'Active users fetched',
+      total,
+      page: parseInt(page),
+      pages: Math.ceil(total / limit),
+      users,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Get users by status (active or inactive)
+exports.getUsers = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 10, status } = req.query;
+    const skip = (page - 1) * limit;
+    const query = {};
+
+    if (status === 'active') query.isActive = true;
+    else if (status === 'inactive') query.isActive = false;
+
+    const users = await User.find(query)
+      .select('-password')
+      .skip(skip)
+      .limit(parseInt(limit))
+      .sort({ createdAt: -1 });
+
+    const total = await User.countDocuments(query);
+
+    res.json({
+      message: 'Users fetched',
       total,
       page: parseInt(page),
       pages: Math.ceil(total / limit),
@@ -354,6 +388,24 @@ exports.getAllProducts = async (req, res, next) => {
       pages: Math.ceil(total / limit),
       products,
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Delete product
+exports.deleteProduct = async (req, res, next) => {
+  try {
+    const { productId } = req.params;
+
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    await Product.findByIdAndDelete(productId);
+
+    res.json({ message: 'Product deleted successfully' });
   } catch (err) {
     next(err);
   }

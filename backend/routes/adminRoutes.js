@@ -13,6 +13,7 @@ router.use(roleMiddleware(['admin']));
 router.get('/dashboard', adminController.getDashboard);
 
 // ==================== USER MANAGEMENT ====================
+router.get('/users', adminController.getUsers);
 router.get('/users/active', adminController.getActiveUsers);
 router.get('/users/:userId', adminController.getUserDetails);
 router.patch('/users/:userId/deactivate', adminController.deactivateUser);
@@ -32,6 +33,7 @@ router.delete('/categories/:categoryId', adminController.deleteCategory);
 
 // ==================== PRODUCT MANAGEMENT ====================
 router.get('/products', adminController.getAllProducts);
+router.delete('/products/:productId', adminController.deleteProduct);
 
 // ==================== REVIEW MANAGEMENT ====================
 router.delete('/reviews/:reviewId', adminController.deleteReview);

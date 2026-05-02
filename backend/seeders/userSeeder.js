@@ -3,6 +3,9 @@ const Shops = require('../models/Shops');
 
 const userSeeder = async () => {
   try {
+    // Remove users whose passwords have not been hashed with bcrypt
+    await User.deleteMany({ password: { $not: { $regex: /^\$2[ab]\$.*/ } } });
+
     const existingUsers = await User.countDocuments({ role: 'buyer' });
     if (existingUsers > 0) {
       console.log('Sample users already exist');
@@ -10,6 +13,21 @@ const userSeeder = async () => {
     }
 
     const users = [
+      {
+        name: 'Admin User',
+        email: 'admin@ecommerce.com',
+        password: 'Admin123@',
+        role: 'admin',
+        phone: '1234567890',
+        address: {
+          street: '123 Admin St',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          country: 'USA',
+        },
+        isActive: true,
+      },
       {
         name: 'John Buyer',
         email: 'buyer1@ecommerce.com',

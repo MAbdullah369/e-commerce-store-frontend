@@ -1,11 +1,30 @@
 const Order = require('../models/Order');
 const Product = require('../models/Product');
+const Payment = require('../models/Payment');
 
-// Get buyer's orders
+// ─────────────────────────────────────────────
+// Helper — simulate notifications (replace with
+// real email/SMS service in production)
+// ─────────────────────────────────────────────
+const notifyBuyer = async (order, event) => {
+  console.log(`[NOTIFY BUYER] Order ${order.orderNumber} — ${event}`);
+  // TODO: integrate nodemailer / SendGrid / Twilio here
+};
+
+const notifySeller = async (order, event) => {
+  const sellerIds = [...new Set(order.items.map(i => i.seller?.toString()).filter(Boolean))];
+  console.log(`[NOTIFY SELLER(S)] ${sellerIds.join(', ')} — Order ${order.orderNumber} — ${event}`);
+  // TODO: integrate notification service here
+};
+
+// ─────────────────────────────────────────────
+// GET /orders  — buyer's own orders
+// ─────────────────────────────────────────────
 exports.getBuyerOrders = async (req, res, next) => {
   try {
     const orders = await Order.find({ user: req.userId })
-      .populate('items.product')
+      .populate('items.product', 'name image price')
+      .populate('items.seller', 'name')
       .sort({ createdAt: -1 });
 
     res.json(orders);
@@ -14,19 +33,27 @@ exports.getBuyerOrders = async (req, res, next) => {
   }
 };
 
-// Get order by ID
+// ─────────────────────────────────────────────
+// GET /orders/:id
+// ─────────────────────────────────────────────
 exports.getOrderById = async (req, res, next) => {
   try {
     const order = await Order.findById(req.params.id)
-      .populate('items.product')
+      .populate('items.product', 'name image price description')
+      .populate('items.seller', 'name email')
       .populate('user', 'name email');
 
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    // Check authorization
-    if (order.user._id.toString() !== req.userId && req.userRole !== 'admin') {
+    // Check authorization: buyer, seller of items in order, or admin
+    const isOrderOwner = order.user._id.toString() === req.userId;
+    const isAdmin = req.userRole === 'admin';
+    const isSeller = req.userRole === 'seller' && 
+      order.items.some(item => item.seller && item.seller._id.toString() === req.userId);
+
+    if (!isOrderOwner && !isSeller && !isAdmin) {
       return res.status(403).json({ error: 'Not authorized to view this order' });
     }
 
@@ -36,7 +63,19 @@ exports.getOrderById = async (req, res, next) => {
   }
 };
 
-// Create order
+// ─────────────────────────────────────────────
+// POST /orders  — place order
+//
+// Pipeline:
+//   1. Validate items & stock
+//   2. Calculate total
+//   3. Save Order (status: pending)
+//   4. Create Payment record (status: pending)
+//   5. Simulate payment verification → mark completed
+//   6. Deduct stock
+//   7. Update order status → confirmed
+//   8. Notify seller & buyer
+// ─────────────────────────────────────────────
 exports.createOrder = async (req, res, next) => {
   try {
     const { items, shippingAddress, paymentMethod } = req.body;
@@ -44,18 +83,29 @@ exports.createOrder = async (req, res, next) => {
     if (!items || items.length === 0) {
       return res.status(400).json({ error: 'Order must contain at least one item' });
     }
+    if (!shippingAddress?.street || !shippingAddress?.city || !shippingAddress?.country) {
+      return res.status(400).json({ error: 'Please provide a complete shipping address' });
+    }
+    if (!paymentMethod) {
+      return res.status(400).json({ error: 'Please select a payment method' });
+    }
 
+    // ── Step 1 & 2: Validate stock + calculate total ──
     let totalAmount = 0;
     const orderItems = [];
 
     for (const item of items) {
       const product = await Product.findById(item.productId);
       if (!product) {
-        return res.status(404).json({ error: `Product ${item.productId} not found` });
+        return res.status(404).json({ error: `Product not found: ${item.productId}` });
       }
-
+      if (!product.isActive || !product.isPublished) {
+        return res.status(400).json({ error: `Product "${product.name}" is no longer available` });
+      }
       if (product.stock < item.quantity) {
-        return res.status(400).json({ error: `Insufficient stock for ${product.name}` });
+        return res.status(400).json({
+          error: `Insufficient stock for "${product.name}". Available: ${product.stock}`,
+        });
       }
 
       const subtotal = product.price * item.quantity;
@@ -63,63 +113,81 @@ exports.createOrder = async (req, res, next) => {
 
       orderItems.push({
         product: product._id,
-        seller: product.seller,
+        seller:  product.seller,
         quantity: item.quantity,
-        price: product.price,
+        price:   product.price,
         subtotal,
       });
-
-      // Reduce product stock
-      product.stock -= item.quantity;
-      await product.save();
     }
 
+    // ── Step 3: Save order (pending) ──
     const order = new Order({
       user: req.userId,
       items: orderItems,
       shippingAddress,
       totalAmount,
       paymentMethod,
+      status: 'pending',
+      paymentStatus: 'pending',
     });
-
     await order.save();
 
+    // ── Step 4: Create payment record ──
+    const payment = new Payment({
+      order: order._id,
+      user:  req.userId,
+      amount: totalAmount,
+      paymentMethod,
+      status: 'pending',
+    });
+    await payment.save();
+
+    // ── Step 5: Simulate payment verification ──
+    // In production: call Stripe / PayPal / Razorpay here and await callback
+    payment.status = 'completed';
+    payment.transactionId = `TXN-${Date.now()}`;
+    await payment.save();
+
+    // ── Step 6: Deduct stock ──
+    for (const item of orderItems) {
+      await Product.findByIdAndUpdate(item.product, {
+        $inc: { stock: -item.quantity },
+      });
+    }
+
+    // ── Step 7: Confirm order ──
+    order.status = 'confirmed';
+    order.paymentStatus = 'completed';
+    order.sellerNotified = false;
+    order.buyerNotified = false;
+    await order.save();
+
+    // ── Step 8: Notify seller & buyer ──
+    await notifySeller(order, 'New order received');
+    await notifyBuyer(order, 'Order confirmed');
+    order.sellerNotified = true;
+    order.buyerNotified  = true;
+    await order.save();
+
+    // Return populated order
+    const populated = await Order.findById(order._id)
+      .populate('items.product', 'name image price')
+      .populate('items.seller', 'name');
+
     res.status(201).json({
-      message: 'Order created successfully',
-      order,
+      message: 'Order placed successfully',
+      order: populated,
+      payment: { id: payment._id, transactionId: payment.transactionId, status: payment.status },
     });
   } catch (err) {
     next(err);
   }
 };
 
-// Update order status
-exports.updateOrderStatus = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
-
-    const validStatuses = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ error: 'Invalid status' });
-    }
-
-    const order = await Order.findByIdAndUpdate(id, { status }, { new: true });
-
-    if (!order) {
-      return res.status(404).json({ error: 'Order not found' });
-    }
-
-    res.json({
-      message: 'Order status updated successfully',
-      order,
-    });
-  } catch (err) {
-    next(err);
-  }
-};
-
-// Cancel order
+// ─────────────────────────────────────────────
+// PUT /orders/:id/cancel  — buyer/admin cancels
+// Restores stock on cancellation
+// ─────────────────────────────────────────────
 exports.cancelOrder = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -135,35 +203,161 @@ exports.cancelOrder = async (req, res, next) => {
     }
 
     if (['shipped', 'delivered', 'cancelled'].includes(order.status)) {
-      return res.status(400).json({ error: 'Cannot cancel order in current status' });
+      return res.status(400).json({ error: `Cannot cancel an order that is already ${order.status}` });
+    }
+
+    // Restore stock for each item
+    for (const item of order.items) {
+      await Product.findByIdAndUpdate(item.product, {
+        $inc: { stock: item.quantity },
+      });
     }
 
     order.status = 'cancelled';
-    order.cancelReason = cancelReason;
+    order.cancelReason = cancelReason || 'Cancelled by user';
     order.cancellationDate = new Date();
-
     await order.save();
 
-    res.json({
-      message: 'Order cancelled successfully',
-      order,
-    });
+    await notifyBuyer(order, 'Order cancelled');
+    await notifySeller(order, 'Order cancelled by buyer');
+
+    res.json({ message: 'Order cancelled successfully', order });
   } catch (err) {
     next(err);
   }
 };
 
-// Get all orders (admin only)
+// ─────────────────────────────────────────────
+// PUT /admin/orders/:id/status  — admin updates status
+// Triggers notifications at each stage
+// ─────────────────────────────────────────────
+exports.updateOrderStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status, trackingNumber, estimatedDelivery } = req.body;
+
+    const validStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
+    }
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    order.status = status;
+    if (trackingNumber) order.trackingNumber = trackingNumber;
+    if (estimatedDelivery) order.estimatedDelivery = new Date(estimatedDelivery);
+    if (status === 'delivered') order.deliveredAt = new Date();
+
+    await order.save();
+
+    // Notify based on status
+    const notifyMap = {
+      confirmed:  'Your order has been confirmed',
+      processing: 'Your order is being processed',
+      shipped:    `Your order has been shipped${trackingNumber ? ` (Tracking: ${trackingNumber})` : ''}`,
+      delivered:  'Your order has been delivered',
+      cancelled:  'Your order has been cancelled',
+      refunded:   'Your order has been refunded',
+    };
+
+    if (notifyMap[status]) {
+      await notifyBuyer(order, notifyMap[status]);
+      if (['shipped', 'delivered'].includes(status)) {
+        await notifySeller(order, `Order ${status}`);
+      }
+    }
+
+    res.json({ message: 'Order status updated successfully', order });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─────────────────────────────────────────────
+// POST /orders/:id/review  — buyer submits review after delivery
+// ─────────────────────────────────────────────
+exports.submitReview = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { productId, rating, comment } = req.body;
+
+    const order = await Order.findById(id);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+
+    if (order.user.toString() !== req.userId) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+    if (order.status !== 'delivered') {
+      return res.status(400).json({ error: 'You can only review delivered orders' });
+    }
+
+    // Update product rating
+    const product = await Product.findById(productId);
+    if (!product) return res.status(404).json({ error: 'Product not found' });
+
+    const newReviewCount = product.reviews + 1;
+    const newRating = ((product.rating * product.reviews) + rating) / newReviewCount;
+
+    product.rating  = Math.round(newRating * 10) / 10;
+    product.reviews = newReviewCount;
+    await product.save();
+
+    res.json({ message: 'Review submitted successfully', rating: product.rating });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─────────────────────────────────────────────
+// POST /orders/:id/return  — buyer requests return/refund
+// ─────────────────────────────────────────────
+exports.requestReturn = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    const order = await Order.findById(id);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+
+    if (order.user.toString() !== req.userId) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+    if (order.status !== 'delivered') {
+      return res.status(400).json({ error: 'You can only return delivered orders' });
+    }
+    if (order.refundStatus !== 'none') {
+      return res.status(400).json({ error: 'A return has already been requested for this order' });
+    }
+
+    order.refundStatus = 'requested';
+    order.refundReason = reason;
+    await order.save();
+
+    await notifyBuyer(order, 'Return request submitted — we will review it shortly');
+    await notifySeller(order, 'Buyer requested a return');
+
+    res.json({ message: 'Return request submitted successfully', order });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─────────────────────────────────────────────
+// GET /orders/admin/all  — admin sees all orders
+// ─────────────────────────────────────────────
 exports.getAllOrders = async (req, res, next) => {
   try {
     const { status, page = 1, limit = 10 } = req.query;
     const filter = {};
-
     if (status) filter.status = status;
 
     const skip = (page - 1) * limit;
     const orders = await Order.find(filter)
       .populate('user', 'name email')
+      .populate('items.product', 'name price')
       .skip(skip)
       .limit(parseInt(limit))
       .sort({ createdAt: -1 });

@@ -1,407 +1,164 @@
-import { useContext, useEffect, useState } from 'react'
-import { Link, useNavigate, Navigate } from 'react-router-dom'
+import { useState, useEffect, useContext } from 'react'
+import { Link, Navigate } from 'react-router-dom'
 import { AuthContext } from '../context/AuthContext'
 import { sellerAPI } from '../services/api'
+import { Loading } from '../components/Utils'
+import { FiGrid, FiPackage, FiShoppingBag, FiBarChart2, FiPlus, FiEdit, FiTrash2, FiStar, FiTrendingUp, FiDollarSign, FiUsers, FiEye, FiEyeOff, FiAlertCircle, FiCheckCircle, FiLoader, FiCheck, FiClock, FiX, FiTruck, FiImage } from 'react-icons/fi'
 
 export default function SellerDashboard() {
   const { user, loading: authLoading } = useContext(AuthContext)
-  const navigate = useNavigate()
+  const [activeTab, setActiveTab] = useState('overview')
+  const [shop, setShop] = useState(null)
   const [stats, setStats] = useState(null)
   const [products, setProducts] = useState([])
   const [orders, setOrders] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [activeTab, setActiveTab] = useState('overview')
-  const [shop, setShop] = useState(null)
-  const [shopNotFound, setShopNotFound] = useState(false)
-  const [showCreateShop, setShowCreateShop] = useState(false)
-  const [shopForm, setShopForm] = useState({
-    shopName: '',
-    description: '',
-    logo: '',
-    address: { street: '', city: '', state: '', zipCode: '', country: '' },
-  })
-  const [shopLoading, setShopLoading] = useState(false)
+  const [success, setSuccess] = useState('')
+  const [shopForm, setShopForm] = useState({ shopName: '', shopDescription: '' })
 
-  // Auth guard — only sellers allowed
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-400 text-lg">Loading...</div>
-      </div>
-    )
-  }
+  if (authLoading) return <Loading />
   if (!user) return <Navigate to="/login" replace />
   if (user.role !== 'seller') return <Navigate to="/" replace />
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  useEffect(() => {
-    fetchShopAndData()
-  }, [activeTab])
+  useEffect(() => { fetchShop(); fetchStats() }, [])
 
-  const fetchShopAndData = async () => {
-    try {
-      setLoading(true)
-      setShopNotFound(false)
-      const shopRes = await sellerAPI.getMyShop()
-      setShop(shopRes.data)
+  const fetchShop = async () => { try { const res = await sellerAPI.getMyShop(); setShop(res.data); setShopForm({ shopName: res.data?.shopName || '', shopDescription: res.data?.shopDescription || '' }) } catch {} }
+  const fetchStats = async () => { try { const res = await sellerAPI.getSellerStats(); setStats(res.data) } catch {} }
+  const fetchProducts = async () => { setLoading(true); try { const res = await sellerAPI.getSellerProducts(); setProducts(res.data.products || res.data || []) } catch { setError('Failed to load products') } finally { setLoading(false) } }
+  const fetchOrders = async () => { setLoading(true); try { const res = await sellerAPI.getSellerOrders(); setOrders(res.data.orders || res.data || []) } catch { setError('Failed to load orders') } finally { setLoading(false) } }
 
-      if (shopRes.data && shopRes.data.shopStatus === 'active') {
-        if (activeTab === 'overview') {
-          const statsRes = await sellerAPI.getSellerStats()
-          setStats(statsRes.data)
-        } else if (activeTab === 'products') {
-          const productsRes = await sellerAPI.getSellerProducts()
-          // Backend returns array directly from our fixed sellerController
-          const productList = Array.isArray(productsRes.data)
-            ? productsRes.data
-            : productsRes.data?.products || []
-          setProducts(productList)
-        } else if (activeTab === 'orders') {
-          const ordersRes = await sellerAPI.getSellerOrders()
-          setOrders(Array.isArray(ordersRes.data) ? ordersRes.data : ordersRes.data?.orders || [])
-        }
-      } else if (shopRes.data && shopRes.data.shopStatus === 'pending') {
-        // Load ALL products (draft + published) to show progress
-        try {
-          const productsRes = await sellerAPI.getSellerProducts()
-          const productList = Array.isArray(productsRes.data)
-            ? productsRes.data
-            : productsRes.data?.products || []
-          setProducts(productList)
-        } catch (_) {}
-      }
-      setError('')
-    } catch (err) {
-      if (err.response?.status === 404) {
-        setShop(null)
-        setShopNotFound(true)
-      } else {
-        setError('Failed to load data. Please refresh.')
-        console.error(err)
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
+  const handleTabChange = (tab) => { setActiveTab(tab); setError(''); setSuccess(''); if (tab === 'products') fetchProducts(); else if (tab === 'orders') fetchOrders(); else if (tab === 'overview') fetchStats() }
 
-  const handleCreateShop = async (e) => {
-    e.preventDefault()
-    setShopLoading(true)
-    try {
-      const response = await sellerAPI.createShop(shopForm)
-      setShop(response.data)
-      setShopNotFound(false)
-      setShowCreateShop(false)
-      alert('Shop created! Now publish at least 3 products to activate it.')
-    } catch (err) {
-      alert(err.response?.data?.error || 'Failed to create shop')
-    } finally {
-      setShopLoading(false)
-    }
-  }
+  const handleCreateShop = async () => { if (!shopForm.shopName) { setError('Shop name required'); return }; setLoading(true); try { const res = await sellerAPI.createShop(shopForm); setShop(res.data); setSuccess('Shop created!') } catch (err) { setError(err.response?.data?.error || 'Failed') } finally { setLoading(false) } }
+  const handleDeleteProduct = async (id) => { if (!window.confirm('Delete?')) return; try { await sellerAPI.deleteProduct(id); fetchProducts() } catch { setError('Failed to delete') } }
+  const handlePublish = async (id) => { try { await sellerAPI.publishProduct(id); fetchProducts(); setSuccess('Product published!') } catch (err) { setError(err.response?.data?.error || 'Failed') } }
+  const handleUpdateOrderStatus = async (orderId, status) => { try { const { orderAPI } = await import('../services/api'); await orderAPI.updateOrderStatus(orderId, status); fetchOrders(); setSuccess('Status updated!') } catch (err) { setError(err.response?.data?.error || 'Failed') } }
 
-  const handleDeleteProduct = async (productId) => {
-    if (!window.confirm('Delete this product?')) return
-    try {
-      await sellerAPI.deleteProduct(productId)
-      fetchShopAndData()
-    } catch (err) {
-      alert('Failed to delete product')
-    }
-  }
+  const tabs = [
+    { id: 'overview', label: 'Overview', icon: FiGrid },
+    { id: 'products', label: 'Products', icon: FiPackage },
+    { id: 'orders', label: 'Orders', icon: FiShoppingBag },
+  ]
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-400 text-lg">Loading...</div>
-      </div>
-    )
-  }
+  const statusConfig = { pending: { color: 'bg-amber-50 text-amber-700 border-amber-200', icon: FiClock }, processing: { color: 'bg-blue-50 text-blue-700 border-blue-200', icon: FiPackage }, shipped: { color: 'bg-indigo-50 text-indigo-700 border-indigo-200', icon: FiTruck }, delivered: { color: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: FiCheck }, cancelled: { color: 'bg-red-50 text-red-700 border-red-200', icon: FiX } }
 
-  // ── Step 1: No shop yet — prompt to create ──
-  if (shopNotFound || (!shop && !loading)) {
-    return (
-      <div className="bg-gray-50 min-h-screen py-12">
-        <div className="max-w-2xl mx-auto px-4">
-          <div className="bg-white rounded-2xl shadow-md p-8">
-            <div className="text-center mb-8">
-              <div className="text-6xl mb-4">🏪</div>
-              <h1 className="text-3xl font-bold text-gray-900">Welcome, {user?.name}!</h1>
-              <p className="text-gray-500 mt-2">You need to create your shop before you can start selling.</p>
-            </div>
-
-            {!showCreateShop ? (
-              <div className="text-center">
-                <button onClick={() => setShowCreateShop(true)} className="bg-blue-600 text-white px-8 py-3 rounded-xl font-semibold hover:bg-blue-700 transition">
-                  Create Your Shop
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleCreateShop} className="space-y-4">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">Shop Details</h2>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Shop Name *</label>
-                  <input
-                    type="text"
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={shopForm.shopName}
-                    onChange={(e) => setShopForm({ ...shopForm, shopName: e.target.value })}
-                    required
-                    placeholder="My Awesome Shop"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
-                  <textarea
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    rows="3"
-                    value={shopForm.description}
-                    onChange={(e) => setShopForm({ ...shopForm, description: e.target.value })}
-                    required
-                    placeholder="Tell buyers about your shop..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Logo URL (optional)</label>
-                  <input
-                    type="url"
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={shopForm.logo}
-                    onChange={(e) => setShopForm({ ...shopForm, logo: e.target.value })}
-                    placeholder="https://..."
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
-                    <input
-                      type="text"
-                      className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={shopForm.address.city}
-                      onChange={(e) => setShopForm({ ...shopForm, address: { ...shopForm.address, city: e.target.value } })}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
-                    <input
-                      type="text"
-                      className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={shopForm.address.country}
-                      onChange={(e) => setShopForm({ ...shopForm, address: { ...shopForm.address, country: e.target.value } })}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex gap-3 pt-2">
-                  <button type="submit" disabled={shopLoading} className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl font-semibold hover:bg-blue-700 transition disabled:opacity-60">
-                    {shopLoading ? 'Creating...' : 'Create Shop'}
-                  </button>
-                  <button type="button" onClick={() => setShowCreateShop(false)} className="flex-1 border border-gray-300 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-50 transition">
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            )}
+  // No shop yet
+  if (!shop) return (
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white py-16">
+      <div className="max-w-md mx-auto px-4 animate-fade-in-up">
+        <div className="bg-white rounded-3xl shadow-xl shadow-gray-200/50 border border-gray-100 p-8 text-center">
+          <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-500/30"><FiShoppingBag className="w-9 h-9 text-white" /></div>
+          <h2 className="text-2xl font-extrabold text-gray-900 mb-2">Create Your Shop</h2>
+          <p className="text-gray-500 mb-6 text-sm">Set up your seller profile to start selling</p>
+          {error && <div className="flex items-center gap-2 bg-red-50 border-l-4 border-red-500 rounded-r-xl p-3 mb-4 text-sm text-red-700"><FiAlertCircle className="w-4 h-4" /> {error}</div>}
+          <div className="space-y-4 text-left">
+            <div><label className="label">Shop Name *</label><input type="text" className="input-field" value={shopForm.shopName} onChange={e => setShopForm(p => ({ ...p, shopName: e.target.value }))} placeholder="My Amazing Shop" /></div>
+            <div><label className="label">Description</label><textarea className="input-field" rows={3} value={shopForm.shopDescription} onChange={e => setShopForm(p => ({ ...p, shopDescription: e.target.value }))} placeholder="Tell customers about your shop..." /></div>
+            <button onClick={handleCreateShop} disabled={loading} className="w-full btn-secondary py-3 flex items-center justify-center gap-2">{loading ? <FiLoader className="w-4 h-4 animate-spin" /> : <FiPlus className="w-4 h-4" />} Create Shop</button>
           </div>
         </div>
       </div>
-    )
-  }
+    </div>
+  )
 
-  // ── Step 2: Shop exists but pending — needs 3 products ──
-  if (shop && shop.shopStatus === 'pending') {
-    const published = products.filter(p => p.isPublished).length
-    const total = products.length
-    const needed = Math.max(0, 3 - published)
-    const progressPct = Math.min(100, (published / 3) * 100)
+  const statCards = stats ? [
+    { label: 'Total Products', value: stats.totalProducts || 0, icon: FiPackage, gradient: 'from-blue-500 to-cyan-500' },
+    { label: 'Published', value: stats.publishedProducts || 0, icon: FiEye, gradient: 'from-emerald-500 to-teal-500' },
+    { label: 'Total Orders', value: stats.totalOrders || 0, icon: FiShoppingBag, gradient: 'from-violet-500 to-purple-500' },
+    { label: 'Revenue', value: `$${(stats.totalRevenue || 0).toFixed(2)}`, icon: FiDollarSign, gradient: 'from-amber-500 to-orange-500' },
+  ] : []
 
-    const handlePublish = async (productId) => {
-      try {
-        await sellerAPI.publishProduct(productId)
-        fetchShopAndData() // refresh to update counts + check activation
-      } catch (err) {
-        alert(err.response?.data?.error || 'Failed to publish product')
-      }
-    }
-
-    return (
-      <div className="bg-gray-50 min-h-screen py-12">
-        <div className="max-w-2xl mx-auto px-4">
-          <div className="bg-white rounded-2xl shadow-md p-8">
-            <div className="text-center mb-8">
-              <div className="text-5xl mb-4">⏳</div>
-              <h1 className="text-2xl font-bold text-gray-900">Complete Your Shop Setup</h1>
-              <p className="text-gray-500 mt-2">"{shop.shopName}" is pending activation.</p>
-            </div>
-
-            {/* Progress */}
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 mb-6">
-              <div className="flex justify-between items-center mb-3">
-                <p className="font-semibold text-amber-900">Published Products</p>
-                <span className="text-2xl font-bold text-amber-700">{published} / 3</span>
-              </div>
-              {/* Progress bar — width driven by actual published count */}
-              <div className="w-full bg-amber-200 rounded-full h-3 overflow-hidden">
-                <div
-                  className="bg-amber-500 h-3 rounded-full transition-all duration-500"
-                  style={{ width: `${progressPct}%` }}
-                />
-              </div>
-              <p className="text-sm text-amber-700 mt-2">
-                {needed > 0
-                  ? `Publish ${needed} more product${needed > 1 ? 's' : ''} to activate your shop`
-                  : '✓ Requirements met! Activating your shop...'}
-              </p>
-            </div>
-
-            {/* Product list */}
-            {total > 0 ? (
-              <div className="mb-6">
-                <p className="font-medium text-gray-700 mb-3">Your products ({total}):</p>
-                <div className="space-y-2">
-                  {products.map(p => (
-                    <div key={p._id} className="flex justify-between items-center py-3 px-4 border rounded-xl bg-gray-50">
-                      <span className="text-gray-800 text-sm font-medium">{p.name}</span>
-                      <div className="flex items-center gap-3">
-                        {p.isPublished ? (
-                          <span className="text-xs px-2.5 py-1 rounded-full font-semibold bg-green-100 text-green-700">
-                            ✓ Published
-                          </span>
-                        ) : (
-                          <>
-                            <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-gray-200 text-gray-500">
-                              Draft
-                            </span>
-                            <button
-                              onClick={() => handlePublish(p._id)}
-                              className="text-xs px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition"
-                            >
-                              Publish
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="mb-6 text-center py-6 bg-gray-50 rounded-xl border border-dashed border-gray-300">
-                <p className="text-gray-500 text-sm">No products yet. Add your first product below.</p>
-              </div>
-            )}
-
-            <Link
-              to="/seller/products/new"
-              className="block text-center bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition"
-            >
-              + Add New Product
-            </Link>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // ── Step 3: Active shop — full dashboard ──
   return (
-    <div className="bg-gray-50 min-h-screen">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
       {/* Header */}
-      <div className="bg-white border-b shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="bg-white/80 backdrop-blur-xl border-b border-gray-100 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Seller Dashboard</h1>
-              <p className="text-gray-500 mt-1">
-                {shop?.shopName} •{' '}
-                <span className="text-green-600 font-medium">● Active</span>
-              </p>
+              <h1 className="text-2xl font-extrabold text-gray-900 flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20"><FiShoppingBag className="w-5 h-5 text-white" /></div>
+                {shop.shopName}
+              </h1>
+              <div className="flex items-center gap-2 mt-1">
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${shop.shopStatus === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${shop.shopStatus === 'active' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                  {shop.shopStatus}
+                </span>
+              </div>
             </div>
-            <Link to="/seller/products/new" className="bg-blue-600 text-white px-5 py-2 rounded-xl font-semibold hover:bg-blue-700 transition text-sm">
-              + Add Product
-            </Link>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex gap-0 border-b">
-            {['overview', 'products', 'orders', 'analytics'].map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-6 py-3 font-medium text-sm border-b-2 transition ${
-                  activeTab === tab
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-800'
-                }`}
-              >
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </button>
-            ))}
+            <Link to="/seller/products/new" className="btn-secondary text-sm py-2.5 flex items-center gap-2"><FiPlus className="w-4 h-4" /> New Product</Link>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 text-sm">
-            {error}
-          </div>
-        )}
+        {error && <div className="flex items-center gap-3 bg-red-50 border-l-4 border-red-500 rounded-r-xl p-4 mb-6 animate-slide-in-right"><FiAlertCircle className="w-5 h-5 text-red-500" /><span className="text-sm text-red-700">{error}</span></div>}
+        {success && <div className="flex items-center gap-3 bg-emerald-50 border-l-4 border-emerald-500 rounded-r-xl p-4 mb-6 animate-slide-in-right"><FiCheckCircle className="w-5 h-5 text-emerald-500" /><span className="text-sm text-emerald-700">{success}</span></div>}
 
-        {/* Overview Tab */}
-        {activeTab === 'overview' && stats && (
-          <div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-              {[
-                { label: 'Total Products', value: stats.totalProducts || 0, color: 'text-blue-600' },
-                { label: 'Total Orders', value: stats.totalOrders || 0, color: 'text-purple-600' },
-                { label: 'Total Sales', value: `$${stats.totalSales?.toFixed(2) || '0.00'}`, color: 'text-green-600' },
-                { label: 'Avg Rating', value: stats.averageRating?.toFixed(1) || 'N/A', color: 'text-yellow-500' },
-              ].map(({ label, value, color }) => (
-                <div key={label} className="bg-white rounded-xl p-6 shadow-sm border">
-                  <p className="text-sm text-gray-500 font-medium">{label}</p>
-                  <p className={`text-3xl font-bold mt-1 ${color}`}>{value}</p>
+        {/* Tabs */}
+        <div className="flex gap-1 mb-8 bg-white rounded-2xl p-1.5 shadow-sm border border-gray-100 w-fit">
+          {tabs.map(({ id, label, icon: Icon }) => (
+            <button key={id} onClick={() => handleTabChange(id)} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${activeTab === id ? 'bg-gradient-to-r from-primary-600 to-accent-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}>
+              <Icon className="w-4 h-4" /> {label}
+            </button>
+          ))}
+        </div>
+
+        {loading && <div className="flex justify-center py-12"><div className="relative"><div className="w-10 h-10 border-3 border-gray-200 rounded-full" /><div className="absolute top-0 left-0 w-10 h-10 border-3 border-primary-600 rounded-full animate-spin border-t-transparent" /></div></div>}
+
+        {/* Overview */}
+        {activeTab === 'overview' && !loading && (
+          <div className="animate-fade-in-up">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              {statCards.map(({ label, value, icon: Icon, gradient }) => (
+                <div key={label} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-all duration-300 group relative overflow-hidden">
+                  <div className={`absolute top-0 right-0 w-20 h-20 bg-gradient-to-br ${gradient} opacity-5 rounded-bl-full group-hover:opacity-10 transition-opacity`} />
+                  <div className={`w-12 h-12 bg-gradient-to-br ${gradient} rounded-xl flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform`}><Icon className="w-5 h-5 text-white" /></div>
+                  <p className="text-gray-500 text-sm font-medium">{label}</p>
+                  <p className="text-2xl font-extrabold text-gray-900 mt-1">{value}</p>
                 </div>
               ))}
             </div>
+          </div>
+        )}
 
-            {stats.recentOrders && stats.recentOrders.length > 0 && (
-              <div className="bg-white rounded-xl shadow-sm border p-6">
-                <h2 className="text-xl font-bold mb-4">Recent Orders</h2>
+        {/* Products */}
+        {activeTab === 'products' && !loading && (
+          <div className="animate-fade-in-up">
+            {products.length === 0 ? (
+              <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
+                <FiPackage className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500 mb-4">No products yet</p>
+                <Link to="/seller/products/new" className="btn-primary inline-flex items-center gap-2"><FiPlus className="w-4 h-4" /> Add Product</Link>
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-gray-500">
-                        <th className="text-left py-2 px-3 font-medium">Order</th>
-                        <th className="text-left py-2 px-3 font-medium">Customer</th>
-                        <th className="text-left py-2 px-3 font-medium">Amount</th>
-                        <th className="text-left py-2 px-3 font-medium">Status</th>
-                        <th className="text-left py-2 px-3 font-medium">Date</th>
+                  <table className="min-w-full">
+                    <thead className="bg-gradient-to-r from-gray-50 to-gray-100/80 border-b border-gray-100">
+                      <tr>
+                        {['Product', 'Price', 'Stock', 'Status', 'Actions'].map(h => <th key={h} className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{h}</th>)}
                       </tr>
                     </thead>
-                    <tbody>
-                      {stats.recentOrders.map(order => (
-                        <tr key={order._id} className="border-b hover:bg-gray-50">
-                          <td className="py-3 px-3 font-medium">{order.orderNumber}</td>
-                          <td className="py-3 px-3">{order.user?.name}</td>
-                          <td className="py-3 px-3 font-semibold">${order.totalAmount.toFixed(2)}</td>
-                          <td className="py-3 px-3">
-                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                              order.status === 'delivered' ? 'bg-green-100 text-green-700' :
-                              order.status === 'shipped' ? 'bg-blue-100 text-blue-700' :
-                              'bg-yellow-100 text-yellow-700'
-                            }`}>
-                              {order.status}
-                            </span>
+                    <tbody className="divide-y divide-gray-100">
+                      {products.map(p => (
+                        <tr key={p._id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center overflow-hidden border border-gray-100 flex-shrink-0">{p.image ? <img src={p.image} alt="" className="w-full h-full object-cover" /> : <FiImage className="w-4 h-4 text-gray-300" />}</div>
+                              <div><p className="font-semibold text-gray-900 text-sm">{p.name}</p><p className="text-xs text-gray-400">{p.category}</p></div>
+                            </div>
                           </td>
-                          <td className="py-3 px-3 text-gray-500">{new Date(order.createdAt).toLocaleDateString()}</td>
+                          <td className="px-6 py-4 font-bold text-primary-600 text-sm">${p.price?.toFixed(2)}</td>
+                          <td className="px-6 py-4"><span className={`text-xs font-bold px-2.5 py-1 rounded-full ${p.stock > 10 ? 'bg-emerald-50 text-emerald-700' : p.stock > 0 ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}`}>{p.stock}</span></td>
+                          <td className="px-6 py-4"><span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${p.isPublished ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-500 border border-gray-200'}`}>{p.isPublished ? <><FiEye className="w-3 h-3" /> Live</> : <><FiEyeOff className="w-3 h-3" /> Draft</>}</span></td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-2">
+                              {!p.isPublished && <button onClick={() => handlePublish(p._id)} className="text-xs font-medium text-emerald-600 hover:text-emerald-700 flex items-center gap-1 bg-emerald-50 px-2.5 py-1.5 rounded-lg hover:bg-emerald-100 transition-all"><FiEye className="w-3 h-3" /> Publish</button>}
+                              <button onClick={() => handleDeleteProduct(p._id)} className="text-xs font-medium text-red-500 hover:text-red-700 flex items-center gap-1 bg-red-50 px-2.5 py-1.5 rounded-lg hover:bg-red-100 transition-all"><FiTrash2 className="w-3 h-3" /> Delete</button>
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -412,103 +169,39 @@ export default function SellerDashboard() {
           </div>
         )}
 
-        {/* Products Tab */}
-        {activeTab === 'products' && (
-          <div className="bg-white rounded-xl shadow-sm border">
-            <div className="flex justify-between items-center p-6 border-b">
-              <h2 className="text-xl font-bold">My Products</h2>
-              <Link to="/seller/products/new" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium">
-                + Add Product
-              </Link>
-            </div>
-            {products.length === 0 ? (
-              <p className="text-center py-12 text-gray-400">No products yet.</p>
+        {/* Orders */}
+        {activeTab === 'orders' && !loading && (
+          <div className="animate-fade-in-up">
+            {orders.length === 0 ? (
+              <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
+                <FiShoppingBag className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500">No orders yet</p>
+              </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 border-b">
-                    <tr>
-                      {['Product', 'Price', 'Stock', 'Status', 'Rating', 'Actions'].map(h => (
-                        <th key={h} className="text-left py-3 px-4 font-semibold text-gray-500 text-xs uppercase">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {products.map(product => (
-                      <tr key={product._id} className="hover:bg-gray-50">
-                        <td className="py-3 px-4 font-medium text-gray-900">{product.name}</td>
-                        <td className="py-3 px-4">${product.price.toFixed(2)}</td>
-                        <td className="py-3 px-4">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            product.stock > 10 ? 'bg-green-100 text-green-700' :
-                            product.stock > 0 ? 'bg-yellow-100 text-yellow-700' :
-                            'bg-red-100 text-red-700'
-                          }`}>
-                            {product.stock}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            product.isPublished ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-                          }`}>
-                            {product.isPublished ? 'Published' : 'Draft'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-yellow-500">⭐ {product.rating?.toFixed(1) || 'N/A'}</td>
-                        <td className="py-3 px-4 flex gap-3">
-                          <Link to={`/seller/products/${product._id}/edit`} className="text-blue-600 hover:text-blue-800 font-medium">Edit</Link>
-                          <button onClick={() => handleDeleteProduct(product._id)} className="text-red-500 hover:text-red-700 font-medium">Delete</button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="space-y-4">
+                {orders.map(order => {
+                  const sc = statusConfig[order.status] || statusConfig.pending
+                  const StatusIcon = sc.icon
+                  return (
+                    <div key={order._id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-all">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                          <p className="font-bold text-gray-900 text-sm">Order #{order._id.slice(-8).toUpperCase()}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">{new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                          <p className="text-xs text-gray-400 mt-1">{order.items?.length || 0} item(s) · Buyer: {order.buyer?.name || 'N/A'}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border ${sc.color}`}><StatusIcon className="w-3 h-3" /> {order.status}</span>
+                          <span className="text-lg font-extrabold text-gray-900">${order.totalAmount?.toFixed(2)}</span>
+                          {order.status === 'pending' && <button onClick={() => handleUpdateOrderStatus(order._id, 'processing')} className="text-xs bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg font-bold hover:bg-blue-100 transition-all">Process</button>}
+                          {order.status === 'processing' && <button onClick={() => handleUpdateOrderStatus(order._id, 'shipped')} className="text-xs bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg font-bold hover:bg-indigo-100 transition-all">Ship</button>}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
-          </div>
-        )}
-
-        {/* Orders Tab */}
-        {activeTab === 'orders' && (
-          <div className="space-y-4">
-            {orders.length === 0 ? (
-              <div className="bg-white rounded-xl p-12 text-center text-gray-400 border">No orders yet.</div>
-            ) : (
-              orders.map(order => (
-                <div key={order._id} className="bg-white rounded-xl shadow-sm border p-6">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h3 className="font-bold text-gray-900">Order {order.orderNumber}</h3>
-                      <p className="text-gray-500 text-sm">Customer: {order.user?.name}</p>
-                    </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                      order.status === 'delivered' ? 'bg-green-100 text-green-700' :
-                      order.status === 'shipped' ? 'bg-blue-100 text-blue-700' :
-                      order.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                      'bg-red-100 text-red-700'
-                    }`}>
-                      {order.status}
-                    </span>
-                  </div>
-                  <div className="text-sm text-gray-600 mb-3">
-                    {order.items?.map((item, idx) => (
-                      <span key={idx}>{item.product?.name} x{item.quantity}{idx < order.items.length - 1 ? ', ' : ''}</span>
-                    ))}
-                  </div>
-                  <Link to={`/seller/orders/${order._id}`} className="text-blue-600 hover:text-blue-800 text-sm font-medium">
-                    View Details →
-                  </Link>
-                </div>
-              ))
-            )}
-          </div>
-        )}
-
-        {/* Analytics Tab */}
-        {activeTab === 'analytics' && (
-          <div className="bg-white rounded-xl shadow-sm border p-12 text-center text-gray-400">
-            <div className="text-5xl mb-4">📈</div>
-            <p className="text-lg font-medium">Analytics dashboard coming soon</p>
           </div>
         )}
       </div>
