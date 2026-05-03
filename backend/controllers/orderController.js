@@ -346,6 +346,70 @@ exports.requestReturn = async (req, res, next) => {
 };
 
 // ─────────────────────────────────────────────
+// PUT /orders/:id/ship  — seller marks as shipped
+// ─────────────────────────────────────────────
+exports.shipOrder = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { trackingNumber } = req.body || {};
+
+    const order = await Order.findById(id);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+
+    // Check if user is a seller for any item in this order
+    const isSeller = order.items.some(item => item.seller?.toString() === req.userId);
+    if (!isSeller && req.userRole !== 'admin') {
+      return res.status(403).json({ error: 'Not authorized to ship this order' });
+    }
+
+    if (order.status !== 'processing' && order.status !== 'confirmed') {
+      return res.status(400).json({ error: `Cannot ship an order that is ${order.status}` });
+    }
+
+    order.status = 'shipped';
+    if (trackingNumber) order.trackingNumber = trackingNumber;
+    await order.save();
+
+    await notifyBuyer(order, `Your order has been shipped!${trackingNumber ? ` (Tracking: ${trackingNumber})` : ''}`);
+    
+    res.json({ message: 'Order marked as shipped', order });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─────────────────────────────────────────────
+// PUT /orders/:id/receive  — buyer marks as delivered
+// ─────────────────────────────────────────────
+exports.receiveOrder = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const order = await Order.findById(id);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+
+    if (order.user.toString() !== req.userId && req.userRole !== 'admin') {
+      return res.status(403).json({ error: 'Not authorized to update this order' });
+    }
+
+    if (order.status !== 'shipped') {
+      return res.status(400).json({ error: 'You can only mark shipped orders as received' });
+    }
+
+    order.status = 'delivered';
+    order.deliveredAt = new Date();
+    await order.save();
+
+    await notifySeller(order, 'Order has been received by the buyer');
+    await notifyBuyer(order, 'Order marked as received. Thank you for shopping with us!');
+
+    res.json({ message: 'Order marked as received', order });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─────────────────────────────────────────────
 // GET /orders/admin/all  — admin sees all orders
 // ─────────────────────────────────────────────
 exports.getAllOrders = async (req, res, next) => {
@@ -358,6 +422,7 @@ exports.getAllOrders = async (req, res, next) => {
     const orders = await Order.find(filter)
       .populate('user', 'name email')
       .populate('items.product', 'name price')
+      .populate('items.seller', 'name email')
       .skip(skip)
       .limit(parseInt(limit))
       .sort({ createdAt: -1 });

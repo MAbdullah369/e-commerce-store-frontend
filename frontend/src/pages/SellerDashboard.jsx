@@ -33,7 +33,20 @@ export default function SellerDashboard() {
   const handleCreateShop = async () => { if (!shopForm.shopName) { setError('Shop name required'); return }; setLoading(true); try { const res = await sellerAPI.createShop(shopForm); setShop(res.data); setSuccess('Shop created!') } catch (err) { setError(err.response?.data?.error || 'Failed') } finally { setLoading(false) } }
   const handleDeleteProduct = async (id) => { if (!window.confirm('Delete?')) return; try { await sellerAPI.deleteProduct(id); fetchProducts() } catch { setError('Failed to delete') } }
   const handlePublish = async (id) => { try { await sellerAPI.publishProduct(id); fetchProducts(); setSuccess('Product published!') } catch (err) { setError(err.response?.data?.error || 'Failed') } }
-  const handleUpdateOrderStatus = async (orderId, status) => { try { const { orderAPI } = await import('../services/api'); await orderAPI.updateOrderStatus(orderId, status); fetchOrders(); setSuccess('Status updated!') } catch (err) { setError(err.response?.data?.error || 'Failed') } }
+  const handleUpdateOrderStatus = async (orderId, status) => {
+    try {
+      const { orderAPI } = await import('../services/api')
+      if (status === 'shipped') {
+        await orderAPI.shipOrder(orderId)
+      } else {
+        await orderAPI.updateOrderStatus(orderId, status)
+      }
+      fetchOrders()
+      setSuccess(`Order marked as ${status}!`)
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to update order')
+    }
+  }
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: FiGrid },
@@ -183,18 +196,26 @@ export default function SellerDashboard() {
                   const sc = statusConfig[order.status] || statusConfig.pending
                   const StatusIcon = sc.icon
                   return (
-                    <div key={order._id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-all">
+                    <div key={order._id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-all group relative">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div>
-                          <p className="font-bold text-gray-900 text-sm">Order #{order._id.slice(-8).toUpperCase()}</p>
+                        <Link to={`/orders/${order._id}`} className="flex-1">
+                          <p className="font-bold text-gray-900 text-sm group-hover:text-primary-600 transition-colors flex items-center gap-2">
+                            Order #{order._id.slice(-8).toUpperCase()}
+                            <FiEye className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </p>
                           <p className="text-xs text-gray-500 mt-0.5">{new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
                           <p className="text-xs text-gray-400 mt-1">{order.items?.length || 0} item(s) · Buyer: {order.buyer?.name || 'N/A'}</p>
-                        </div>
+                        </Link>
                         <div className="flex items-center gap-3">
                           <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border ${sc.color}`}><StatusIcon className="w-3 h-3" /> {order.status}</span>
                           <span className="text-lg font-extrabold text-gray-900">${order.totalAmount?.toFixed(2)}</span>
-                          {order.status === 'pending' && <button onClick={() => handleUpdateOrderStatus(order._id, 'processing')} className="text-xs bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg font-bold hover:bg-blue-100 transition-all">Process</button>}
-                          {order.status === 'processing' && <button onClick={() => handleUpdateOrderStatus(order._id, 'shipped')} className="text-xs bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg font-bold hover:bg-indigo-100 transition-all">Ship</button>}
+                          {order.status === 'pending' && (
+                            <button onClick={() => handleUpdateOrderStatus(order._id, 'processing')} className="text-xs bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg font-bold hover:bg-blue-100 transition-all">Process</button>
+                          )}
+                          {(order.status === 'processing' || order.status === 'confirmed') && (
+                            <button onClick={() => handleUpdateOrderStatus(order._id, 'shipped')} className="text-xs bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg font-bold hover:bg-indigo-100 transition-all">Ship</button>
+                          )}
+                          <Link to={`/orders/${order._id}`} className="text-xs bg-gray-50 text-gray-600 px-3 py-1.5 rounded-lg font-bold hover:bg-gray-100 transition-all flex items-center gap-1.5"><FiEye className="w-3 h-3" /> Detail</Link>
                         </div>
                       </div>
                     </div>

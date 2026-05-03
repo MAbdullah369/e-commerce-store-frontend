@@ -81,7 +81,7 @@ export const CartProvider = ({ children }) => {
       })
       
       const res = await cartAPI.addToCart({ productId, quantity })
-      setCart(res.data)
+      setCart(res.data.cart || res.data)
       setError('')
       return res.data
     } catch (err) {
@@ -136,7 +136,7 @@ export const CartProvider = ({ children }) => {
       })
       
       const res = await cartAPI.updateCartItem({ productId, quantity })
-      setCart(res.data)
+      setCart(res.data.cart || res.data)
       setError('')
     } catch (err) {
       await fetchCart() // Revert on error
@@ -197,7 +197,7 @@ export const CartProvider = ({ children }) => {
       
       // Update with server response
       if (res && res.data) {
-        setCart(res.data)
+        setCart(res.data.cart || res.data)
       }
       
       setError('')
@@ -256,7 +256,7 @@ export const CartProvider = ({ children }) => {
     try {
       setLoading(true)
       const res = await wishlistAPI.addToWishlist(productId)
-      setWishlist(res.data)
+      setWishlist(res.data.wishlist || res.data)
       setError('')
       return res.data
     } catch (err) {
@@ -277,7 +277,7 @@ export const CartProvider = ({ children }) => {
     try {
       setLoading(true)
       const res = await wishlistAPI.removeFromWishlist(productId)
-      setWishlist(res.data)
+      setWishlist(res.data.wishlist || res.data)
       setError('')
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to remove from wishlist')

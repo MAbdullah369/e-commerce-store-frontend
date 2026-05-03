@@ -18,6 +18,8 @@ export default function OrderDetail() {
   const fetchOrder = async () => { try { setLoading(true); const res = await orderAPI.getOrderById(id); setOrder(res.data); setError('') } catch { setError('Failed to load order') } finally { setLoading(false) } }
 
   const handleCancel = async () => { if (!window.confirm('Cancel this order?')) return; setCancelLoading(true); try { await orderAPI.cancelOrder(id, 'Cancelled by user'); await fetchOrder() } catch (err) { setError(err.response?.data?.error || 'Failed to cancel') } finally { setCancelLoading(false) } }
+  const handleReceive = async () => { if (!window.confirm('Mark this order as received?')) return; try { setLoading(true); await orderAPI.receiveOrder(id); await fetchOrder() } catch (err) { setError(err.response?.data?.error || 'Failed to update order') } finally { setLoading(false) } }
+  const handleShip = async () => { if (!window.confirm('Mark this order as shipped?')) return; try { setLoading(true); await orderAPI.shipOrder(id); await fetchOrder() } catch (err) { setError(err.response?.data?.error || 'Failed to ship order') } finally { setLoading(false) } }
 
   if (authLoading || loading) return <Loading />
   if (!user) return <Navigate to="/login" replace />
@@ -54,8 +56,14 @@ export default function OrderDetail() {
             </div>
             <div className="flex items-center gap-3">
               <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold border ${sc.color}`}><StatusIcon className="w-4 h-4" /> {order.status?.charAt(0).toUpperCase() + order.status?.slice(1)}</span>
-              {(order.status === 'pending' || order.status === 'processing') && (
+              {(order.status === 'pending' || order.status === 'processing') && (user.role === 'buyer' || user.role === 'admin') && (
                 <button onClick={handleCancel} disabled={cancelLoading} className="btn-danger text-xs py-2 px-4 flex items-center gap-1.5">{cancelLoading ? <FiLoader className="w-3 h-3 animate-spin" /> : <FiX className="w-3 h-3" />} Cancel</button>
+              )}
+              {order.status === 'shipped' && user.role === 'buyer' && (
+                <button onClick={handleReceive} className="btn-primary text-xs py-2 px-4 flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 border-emerald-600 shadow-emerald-500/20"><FiCheck className="w-3 h-3" /> Mark as Received</button>
+              )}
+              {(order.status === 'confirmed' || order.status === 'processing') && user.role === 'seller' && (
+                <button onClick={handleShip} className="btn-primary text-xs py-2 px-4 flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 border-indigo-600 shadow-indigo-500/20"><FiTruck className="w-3 h-3" /> Mark as Shipped</button>
               )}
             </div>
           </div>

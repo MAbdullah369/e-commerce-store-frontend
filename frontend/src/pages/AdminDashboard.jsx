@@ -2,8 +2,8 @@
 import { useState, useEffect, useContext } from 'react'
 import { Navigate } from 'react-router-dom'
 import { AuthContext } from '../context/AuthContext'
-import API from '../services/api'
-import { FiUsers, FiShoppingBag, FiGrid, FiPackage, FiDollarSign, FiTrendingUp, FiUserCheck, FiUserX, FiPlus, FiTrash2, FiCheck, FiPause, FiAlertCircle, FiShield, FiLoader, FiImage } from 'react-icons/fi'
+import API, { orderAPI } from '../services/api'
+import { FiUsers, FiShoppingBag, FiGrid, FiPackage, FiDollarSign, FiTrendingUp, FiUserCheck, FiUserX, FiPlus, FiTrash2, FiCheck, FiPause, FiAlertCircle, FiShield, FiLoader, FiImage, FiTruck, FiClock, FiX, FiEye } from 'react-icons/fi'
 
 export default function AdminDashboard() {
   const { user, loading: authLoading } = useContext(AuthContext)
@@ -14,6 +14,7 @@ export default function AdminDashboard() {
   const [sellers, setSellers] = useState([])
   const [categories, setCategories] = useState([])
   const [products, setProducts] = useState([])
+  const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [showAddCategory, setShowAddCategory] = useState(false)
@@ -40,8 +41,9 @@ export default function AdminDashboard() {
   const fetchSellers = async () => { try { setLoading(true); const r = await API.get('/admin/sellers'); setSellers(r.data.sellers || r.data || []); setError(null) } catch { setError('Failed to fetch sellers') } finally { setLoading(false) } }
   const fetchCategories = async () => { try { setLoading(true); const r = await API.get('/admin/categories'); setCategories(r.data.categories || r.data || []); setError(null) } catch { setError('Failed to fetch categories') } finally { setLoading(false) } }
   const fetchProducts = async () => { try { setLoading(true); const r = await API.get('/admin/products'); setProducts(r.data.products || r.data || []); setError(null) } catch { setError('Failed to fetch products') } finally { setLoading(false) } }
+  const fetchOrders = async () => { try { setLoading(true); const r = await orderAPI.getAllOrders(); setOrders(r.data.orders || r.data || []); setError(null) } catch { setError('Failed to fetch orders') } finally { setLoading(false) } }
 
-  const handleTabChange = (tab) => { setActiveTab(tab); if (tab === 'users') { setUserStatusView('active'); fetchUsers('active') } else if (tab === 'sellers') fetchSellers(); else if (tab === 'categories') fetchCategories(); else if (tab === 'products') fetchProducts(); else if (tab === 'dashboard') fetchDashboardData() }
+  const handleTabChange = (tab) => { setActiveTab(tab); if (tab === 'users') { setUserStatusView('active'); fetchUsers('active') } else if (tab === 'sellers') fetchSellers(); else if (tab === 'categories') fetchCategories(); else if (tab === 'products') fetchProducts(); else if (tab === 'orders') fetchOrders(); else if (tab === 'dashboard') fetchDashboardData() }
 
   const handleApproveSeller = async (shopId) => { try { await API.patch(`/admin/sellers/${shopId}/approve`); fetchSellers() } catch { alert('Failed to approve') } }
   const handleSuspendSeller = async (shopId) => { try { await API.patch(`/admin/sellers/${shopId}/suspend`); fetchSellers() } catch { alert('Failed to suspend') } }
@@ -55,7 +57,8 @@ export default function AdminDashboard() {
     { id: 'dashboard', label: 'Dashboard', icon: FiGrid },
     { id: 'users', label: 'Users', icon: FiUsers },
     { id: 'sellers', label: 'Sellers', icon: FiShoppingBag },
-    { id: 'categories', label: 'Categories', icon: FiPackage },
+    { id: 'orders', label: 'Orders', icon: FiTrendingUp },
+    { id: 'categories', label: 'Categories', icon: FiGrid },
     { id: 'products', label: 'Products', icon: FiPackage },
   ]
 
@@ -238,6 +241,57 @@ export default function AdminDashboard() {
                         <td className="px-6 py-4"><button onClick={() => handleDeleteProduct(p._id)} className="text-xs font-semibold text-red-600 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-all flex items-center gap-1"><FiTrash2 className="w-3 h-3" /> Delete</button></td>
                       </tr>
                     ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Orders */}
+        {activeTab === 'orders' && !loading && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden animate-fade-in-up">
+            {orders.length === 0 ? (
+              <div className="text-center py-16"><FiShoppingBag className="w-10 h-10 text-gray-300 mx-auto mb-3" /><p className="text-gray-400">No orders found</p></div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <thead className="bg-gradient-to-r from-gray-50 to-gray-100/80 border-b">
+                    <tr>{['Order', 'Buyer', 'Sellers', 'Total', 'Status', 'Actions'].map(h => <th key={h} className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{h}</th>)}</tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {orders.map(order => {
+                      const sellers = [...new Set(order.items?.map(i => i.seller?.name).filter(Boolean))]
+                      const statusColors = { pending: 'bg-amber-50 text-amber-700', processing: 'bg-blue-50 text-blue-700', shipped: 'bg-indigo-50 text-indigo-700', delivered: 'bg-emerald-50 text-emerald-700', cancelled: 'bg-red-50 text-red-700' }
+                      return (
+                        <tr key={order._id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-6 py-4">
+                            <p className="font-bold text-gray-900 text-sm">#{order._id.slice(-8).toUpperCase()}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">{new Date(order.createdAt).toLocaleDateString()}</p>
+                          </td>
+                          <td className="px-6 py-4">
+                            <p className="font-semibold text-gray-900 text-sm">{order.user?.name || 'N/A'}</p>
+                            <p className="text-xs text-gray-500">{order.user?.email}</p>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex flex-wrap gap-1">
+                              {sellers.map((s, i) => <span key={i} className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] font-bold">{s}</span>)}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 font-bold text-gray-900 text-sm">${order.totalAmount?.toFixed(2)}</td>
+                          <td className="px-6 py-4">
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${statusColors[order.status] || 'bg-gray-100 text-gray-600'}`}>
+                              {order.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <a href={`/orders/${order._id}`} className="text-xs font-semibold text-primary-600 bg-primary-50 px-3 py-1.5 rounded-lg hover:bg-primary-100 transition-all flex items-center gap-1.5 w-fit">
+                              <FiEye className="w-3.5 h-3.5" /> Details
+                            </a>
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>

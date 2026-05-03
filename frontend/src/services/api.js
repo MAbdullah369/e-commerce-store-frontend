@@ -68,6 +68,8 @@ export const orderAPI = {
   getOrderById: (id) => API.get(`/orders/${id}`),
   updateOrderStatus: (id, status) => API.put(`/orders/${id}/status`, { status }),
   cancelOrder: (id, reason) => API.put(`/orders/${id}/cancel`, { cancelReason: reason }),
+  shipOrder: (id, data = {}) => API.put(`/orders/${id}/ship`, data),
+  receiveOrder: (id) => API.put(`/orders/${id}/receive`),
   getAllOrders: () => API.get('/orders/admin/all'),
 };
 

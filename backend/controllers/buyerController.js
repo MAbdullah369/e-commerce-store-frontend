@@ -50,6 +50,7 @@ exports.addToCart = async (req, res, next) => {
 
     cart.calculateTotals();
     await cart.save();
+    await cart.populate('items.product');
 
     res.json({
       message: 'Item added to cart',
@@ -83,6 +84,7 @@ exports.updateCartItem = async (req, res, next) => {
 
     cart.calculateTotals();
     await cart.save();
+    await cart.populate('items.product');
 
     res.json({
       message: 'Cart updated',
@@ -107,6 +109,7 @@ exports.removeFromCart = async (req, res, next) => {
 
     cart.calculateTotals();
     await cart.save();
+    await cart.populate('items.product');
 
     res.json({
       message: 'Item removed from cart',
@@ -128,6 +131,7 @@ exports.clearCart = async (req, res, next) => {
     cart.items = [];
     cart.calculateTotals();
     await cart.save();
+    await cart.populate('items.product');
 
     res.json({
       message: 'Cart cleared',
@@ -174,6 +178,8 @@ exports.addToWishlist = async (req, res, next) => {
       await wishlist.save();
     }
 
+    await wishlist.populate('items.product');
+
     res.json({
       message: 'Item added to wishlist',
       wishlist,
@@ -196,6 +202,7 @@ exports.removeFromWishlist = async (req, res, next) => {
 
     wishlist.items = wishlist.items.filter((item) => item.product.toString() !== productId);
     await wishlist.save();
+    await wishlist.populate('items.product');
 
     res.json({
       message: 'Item removed from wishlist',

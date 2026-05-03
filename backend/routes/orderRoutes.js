@@ -19,6 +19,8 @@ router.get('/', authMiddleware, orderController.getBuyerOrders);
 router.post('/', authMiddleware, orderController.createOrder);
 router.get('/:id', authMiddleware, orderController.getOrderById);
 router.put('/:id/cancel', authMiddleware, orderController.cancelOrder);
+router.put('/:id/ship', authMiddleware, roleMiddleware(['seller', 'admin']), orderController.shipOrder);
+router.put('/:id/receive', authMiddleware, orderController.receiveOrder);
 router.post('/:id/review', authMiddleware, orderController.submitReview);
 router.post('/:id/return', authMiddleware, orderController.requestReturn);
 

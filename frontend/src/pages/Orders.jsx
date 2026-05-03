@@ -19,6 +19,20 @@ export default function Orders() {
     finally { setLoading(false) }
   }
 
+  const handleReceive = async (e, id) => {
+    e.preventDefault(); // Prevent navigating to detail page
+    if (!window.confirm('Mark this order as received?')) return;
+    try {
+      setLoading(true);
+      await orderAPI.receiveOrder(id);
+      await fetchOrders();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to update order');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   if (authLoading) return <Loading />
   if (!user) return <Navigate to="/login" replace />
   if (loading) return <Loading />
@@ -71,6 +85,9 @@ export default function Orders() {
                       </span>
                       <span className="text-lg font-extrabold bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent">${order.totalAmount?.toFixed(2)}</span>
                       <FiEye className="w-4 h-4 text-gray-400 group-hover:text-primary-500 transition-colors" />
+                      {order.status === 'shipped' && (
+                        <button onClick={(e) => handleReceive(e, order._id)} className="ml-2 text-xs bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg font-bold hover:bg-emerald-100 transition-all">Receive</button>
+                      )}
                     </div>
                   </div>
                 </Link>
