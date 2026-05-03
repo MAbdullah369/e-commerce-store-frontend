@@ -14,6 +14,7 @@ export default function Wishlist() {
 
   if (authLoading) return <Loading />
   if (!user) return <Navigate to="/login" replace />
+  if (user.role !== 'buyer') return <Navigate to="/" replace />
   if (loading && !wishlist) return <Loading />
 
   const items = wishlist?.items || []

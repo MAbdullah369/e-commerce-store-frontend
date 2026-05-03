@@ -113,10 +113,16 @@ export default function ProductDetail() {
                 <p className="text-sm text-amber-600 bg-amber-50 border border-amber-200 px-4 py-2.5 rounded-xl font-medium">Please <Link to="/login" className="font-bold underline">sign in</Link> to add items to your cart</p>
                 <Link to="/login" className="block w-full text-center btn-primary py-3.5">Sign In to Purchase</Link>
               </div>
-            ) : (
+            ) : user.role === 'buyer' ? (
               <button onClick={handleAddToCart} disabled={product.stock === 0 || addingToCart} className={`w-full py-3.5 rounded-xl font-bold text-white transition-all duration-300 flex items-center justify-center gap-2 ${product.stock === 0 ? 'bg-gray-300 cursor-not-allowed' : 'bg-gradient-to-r from-primary-600 to-accent-600 hover:shadow-xl hover:shadow-primary-500/25 hover:-translate-y-0.5'}`}>
                 {addingToCart ? <><FiLoader className="w-5 h-5 animate-spin" /> Adding...</> : product.stock === 0 ? 'Out of Stock' : <><FiShoppingCart className="w-5 h-5" /> Add to Cart</>}
               </button>
+            ) : (
+              <div className="p-4 bg-gray-50 border border-gray-200 rounded-2xl text-center">
+                <p className="text-sm font-semibold text-gray-500 flex items-center justify-center gap-2">
+                  <FiShield className="w-4 h-4" /> Sellers and Admins cannot purchase items.
+                </p>
+              </div>
             )}
 
             {/* Trust Badges */}

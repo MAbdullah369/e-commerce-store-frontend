@@ -1,11 +1,12 @@
-// ProductCard.jsx
-import { Link } from 'react-router-dom'
 import { useContext, useState, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import { CartContext } from '../context/CartContext'
+import { AuthContext } from '../context/AuthContext'
 import toast, { Toaster } from 'react-hot-toast'
 import { FiShoppingCart, FiHeart, FiStar, FiImage, FiLoader, FiEye } from 'react-icons/fi'
 
 export default function ProductCard({ product }) {
+  const { user } = useContext(AuthContext)
   const { addToCart, addToWishlist } = useContext(CartContext)
   const [isAdding, setIsAdding] = useState(false)
   const [isWishlisting, setIsWishlisting] = useState(false)
@@ -94,30 +95,32 @@ export default function ProductCard({ product }) {
             </span>
           </div>
 
-          <div className="flex gap-2" onClick={(e) => e.preventDefault()}>
-            <button
-              onClick={handleAddToCart}
-              disabled={product.stock === 0 || isAdding}
-              className={`flex-1 py-2.5 rounded-xl font-semibold text-sm transition-all duration-300 flex items-center justify-center gap-2 ${
-                product.stock === 0 || isAdding
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-primary-600 to-primary-700 text-white hover:shadow-lg hover:shadow-primary-500/30 hover:-translate-y-0.5 active:translate-y-0'
-              }`}
-            >
-              {isAdding ? (
-                <><FiLoader className="w-4 h-4 animate-spin" /> Adding...</>
-              ) : (
-                <><FiShoppingCart className="w-4 h-4" /> Add to Cart</>
-              )}
-            </button>
-            <button
-              onClick={handleAddToWishlist}
-              disabled={isWishlisting}
-              className="w-11 h-11 rounded-xl border border-gray-200 flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-all duration-300 disabled:opacity-50 hover:-translate-y-0.5"
-            >
-              {isWishlisting ? <FiLoader className="w-4 h-4 animate-spin" /> : <FiHeart className="w-5 h-5" />}
-            </button>
-          </div>
+          {(!user || user.role === 'buyer') && (
+            <div className="flex gap-2" onClick={(e) => e.preventDefault()}>
+              <button
+                onClick={handleAddToCart}
+                disabled={product.stock === 0 || isAdding}
+                className={`flex-1 py-2.5 rounded-xl font-semibold text-sm transition-all duration-300 flex items-center justify-center gap-2 ${
+                  product.stock === 0 || isAdding
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-primary-600 to-primary-700 text-white hover:shadow-lg hover:shadow-primary-500/30 hover:-translate-y-0.5 active:translate-y-0'
+                }`}
+              >
+                {isAdding ? (
+                  <><FiLoader className="w-4 h-4 animate-spin" /> Adding...</>
+                ) : (
+                  <><FiShoppingCart className="w-4 h-4" /> Add to Cart</>
+                )}
+              </button>
+              <button
+                onClick={handleAddToWishlist}
+                disabled={isWishlisting}
+                className="w-11 h-11 rounded-xl border border-gray-200 flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-all duration-300 disabled:opacity-50 hover:-translate-y-0.5"
+              >
+                {isWishlisting ? <FiLoader className="w-4 h-4 animate-spin" /> : <FiHeart className="w-5 h-5" />}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </>

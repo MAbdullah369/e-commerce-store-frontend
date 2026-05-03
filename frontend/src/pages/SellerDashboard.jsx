@@ -204,11 +204,11 @@ export default function SellerDashboard() {
                             <FiEye className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
                           </p>
                           <p className="text-xs text-gray-500 mt-0.5">{new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
-                          <p className="text-xs text-gray-400 mt-1">{order.items?.length || 0} item(s) · Buyer: {order.buyer?.name || 'N/A'}</p>
+                          <p className="text-xs text-gray-400 mt-1">{order.items?.length || 0} item(s) · Buyer: {order.user?.name || 'N/A'}</p>
                         </Link>
                         <div className="flex items-center gap-3">
                           <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border ${sc.color}`}><StatusIcon className="w-3 h-3" /> {order.status}</span>
-                          <span className="text-lg font-extrabold text-gray-900">${order.totalAmount?.toFixed(2)}</span>
+                          <span className="text-lg font-extrabold text-gray-900">${(order.sellerSubtotal || order.totalAmount)?.toFixed(2)}</span>
                           {order.status === 'pending' && (
                             <button onClick={() => handleUpdateOrderStatus(order._id, 'processing')} className="text-xs bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg font-bold hover:bg-blue-100 transition-all">Process</button>
                           )}

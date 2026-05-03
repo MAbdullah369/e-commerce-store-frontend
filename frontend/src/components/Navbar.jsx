@@ -75,7 +75,7 @@ export default function Navbar() {
               Products
             </Link>
 
-            {user && (
+            {user && user.role === 'buyer' && (
               <>
                 <Link to="/cart" className={`relative flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${isActive('/cart') ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:text-primary-600 hover:bg-gray-50'}`}>
                   <FiShoppingCart className="w-4.5 h-4.5" />
@@ -136,22 +136,13 @@ export default function Navbar() {
                     )}
 
                     {user.role === 'seller' && (
-                      <>
-                        <Link
-                          to="/orders"
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-700 transition-colors"
-                        >
-                          <FiPackage className="w-4 h-4 text-gray-400" />
-                          Orders
-                        </Link>
-                        <Link
-                          to="/seller"
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-700 transition-colors"
-                        >
-                          <FiShoppingBag className="w-4 h-4 text-gray-400" />
-                          Seller Dashboard
-                        </Link>
-                      </>
+                      <Link
+                        to="/seller"
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-700 transition-colors"
+                      >
+                        <FiShoppingBag className="w-4 h-4 text-gray-400" />
+                        Seller Dashboard
+                      </Link>
                     )}
 
                     {user.role === 'admin' && (
@@ -211,19 +202,23 @@ export default function Navbar() {
               </Link>
               {user && (
                 <>
-                  <Link to="/cart" className="flex items-center gap-3 text-gray-600 hover:text-primary-600 hover:bg-primary-50 transition-all py-2.5 px-3 rounded-xl">
-                    <FiShoppingCart className="w-5 h-5" />
-                    Cart
-                    {cartItemCount > 0 && (
-                      <span className="bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                        {cartItemCount}
-                      </span>
-                    )}
-                  </Link>
-                  <Link to="/wishlist" className="flex items-center gap-3 text-gray-600 hover:text-pink-500 hover:bg-pink-50 transition-all py-2.5 px-3 rounded-xl">
-                    <FiHeart className="w-5 h-5" />
-                    Wishlist
-                  </Link>
+                  {user.role === 'buyer' && (
+                    <>
+                      <Link to="/cart" className="flex items-center gap-3 text-gray-600 hover:text-primary-600 hover:bg-primary-50 transition-all py-2.5 px-3 rounded-xl">
+                        <FiShoppingCart className="w-5 h-5" />
+                        Cart
+                        {cartItemCount > 0 && (
+                          <span className="bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                            {cartItemCount}
+                          </span>
+                        )}
+                      </Link>
+                      <Link to="/wishlist" className="flex items-center gap-3 text-gray-600 hover:text-pink-500 hover:bg-pink-50 transition-all py-2.5 px-3 rounded-xl">
+                        <FiHeart className="w-5 h-5" />
+                        Wishlist
+                      </Link>
+                    </>
+                  )}
                   <div className="border-t border-gray-100 my-2"></div>
                   <div className="flex items-center gap-3 py-2.5 px-3">
                     <div className="w-9 h-9 bg-gradient-to-br from-primary-500 to-accent-500 rounded-xl flex items-center justify-center text-white font-semibold shadow-md">
@@ -245,16 +240,10 @@ export default function Navbar() {
                     </Link>
                   )}
                   {user.role === 'seller' && (
-                    <>
-                      <Link to="/orders" className="flex items-center gap-3 text-gray-600 hover:text-primary-600 hover:bg-primary-50 transition-all py-2.5 px-3 rounded-xl">
-                        <FiPackage className="w-5 h-5" />
-                        Orders
-                      </Link>
-                      <Link to="/seller" className="flex items-center gap-3 text-gray-600 hover:text-primary-600 hover:bg-primary-50 transition-all py-2.5 px-3 rounded-xl">
-                        <FiShoppingBag className="w-5 h-5" />
-                        Seller Dashboard
-                      </Link>
-                    </>
+                    <Link to="/seller" className="flex items-center gap-3 text-gray-600 hover:text-primary-600 hover:bg-primary-50 transition-all py-2.5 px-3 rounded-xl">
+                      <FiShoppingBag className="w-5 h-5" />
+                      Seller Dashboard
+                    </Link>
                   )}
                   {user.role === 'admin' && (
                     <Link to="/admin" className="flex items-center gap-3 text-gray-600 hover:text-primary-600 hover:bg-primary-50 transition-all py-2.5 px-3 rounded-xl">

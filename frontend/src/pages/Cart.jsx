@@ -12,6 +12,7 @@ export default function Cart() {
 
   if (authLoading) return <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-50 to-white"><div className="relative"><div className="w-14 h-14 border-4 border-primary-100 rounded-full"></div><div className="absolute top-0 left-0 w-14 h-14 border-4 border-primary-600 rounded-full animate-spin border-t-transparent"></div></div></div>
   if (!user) return <Navigate to="/login" replace />
+  if (user.role !== 'buyer') return <Navigate to="/" replace />
 
   if (loading) return <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-slate-50 to-white"><div className="relative"><div className="w-14 h-14 border-4 border-primary-100 rounded-full"></div><div className="absolute top-0 left-0 w-14 h-14 border-4 border-primary-600 rounded-full animate-spin border-t-transparent"></div></div><p className="mt-6 text-gray-500 font-medium">Loading your cart...</p></div>
 

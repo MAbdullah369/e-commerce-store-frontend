@@ -35,6 +35,7 @@ export default function Orders() {
 
   if (authLoading) return <Loading />
   if (!user) return <Navigate to="/login" replace />
+  if (user.role !== 'buyer') return <Navigate to="/" replace />
   if (loading) return <Loading />
 
   const statusConfig = {

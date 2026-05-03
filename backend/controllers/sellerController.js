@@ -212,25 +212,30 @@ exports.getSellerStats = async (req, res, next) => {
       },
     ]);
 
-    const recentOrders = await Order.find()
+    const myRecentOrders = await Order.find({ 'items.seller': req.userId })
       .populate('user', 'name email')
-      .populate('items.product', 'name seller')
+      .populate('items.product', 'name price')
       .sort({ createdAt: -1 })
       .limit(5)
       .lean();
 
-    // Filter to only include orders containing this seller's products
-    const myRecentOrders = recentOrders.filter(order =>
-      order.items.some(item => item.product?.seller?.toString() === req.userId)
-    );
+    // Filter items and calculate subtotal for recent orders
+    const filteredRecentOrders = myRecentOrders.map(order => {
+      const myItems = order.items.filter(item => 
+        item.seller?.toString() === req.userId || 
+        item.product?.seller?.toString() === req.userId
+      );
+      const sellerSubtotal = myItems.reduce((sum, item) => sum + (item.subtotal || 0), 0);
+      return { ...order, items: myItems, sellerSubtotal };
+    });
 
     res.json({
       totalProducts,
       publishedProducts,
       totalSales: salesAgg[0]?.totalSales || 0,
       totalOrders: salesAgg[0]?.totalOrders || 0,
-      averageRating: 0, // extend later
-      recentOrders: myRecentOrders,
+      averageRating: 0, 
+      recentOrders: filteredRecentOrders,
     });
   } catch (err) {
     next(err);
@@ -256,18 +261,23 @@ exports.getSellerOrders = async (req, res, next) => {
   try {
     const Order = require('../models/Order');
 
-    const orders = await Order.find()
+    const orders = await Order.find({ 'items.seller': req.userId })
       .populate('user', 'name email')
-      .populate('items.product', 'name seller price')
+      .populate('items.product', 'name seller price image')
       .sort({ createdAt: -1 })
       .lean();
 
-    // Filter to orders that contain at least one of this seller's products
-    const myOrders = orders.filter(order =>
-      order.items.some(item => item.product?.seller?.toString() === req.userId)
-    );
+    // Filter items to only show those belonging to this seller
+    const filteredOrders = orders.map(order => {
+      const myItems = order.items.filter(item => 
+        item.seller?.toString() === req.userId || 
+        item.product?.seller?.toString() === req.userId
+      );
+      const sellerSubtotal = myItems.reduce((sum, item) => sum + (item.subtotal || 0), 0);
+      return { ...order, items: myItems, sellerSubtotal };
+    });
 
-    res.json(myOrders);
+    res.json(filteredOrders);
   } catch (err) {
     next(err);
   }
