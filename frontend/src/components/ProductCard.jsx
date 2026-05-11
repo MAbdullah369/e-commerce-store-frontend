@@ -51,13 +51,13 @@ export default function ProductCard({ product }) {
   return (
     <>
       <Toaster />
-      <div className="group bg-white rounded-2xl shadow-sm hover:shadow-2xl hover:shadow-primary-100/50 transition-all duration-500 overflow-hidden border border-gray-100 hover:border-primary-200/50 animate-fade-in-up">
+      <div className="group bg-white dark:bg-gray-900 rounded-2xl shadow-sm hover:shadow-2xl hover:shadow-primary-100/50 dark:hover:shadow-none transition-all duration-500 overflow-hidden border border-gray-100 dark:border-gray-800 hover:border-primary-200/50 dark:hover:border-gray-700 animate-fade-in-up">
         <Link to={`/products/${product._id}`} className="block">
-          <div className="relative w-full h-56 bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
+          <div className="relative w-full h-56 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 overflow-hidden">
             {product.image ? (
               <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" loading="lazy" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center"><FiImage className="w-12 h-12 text-gray-300" /></div>
+              <div className="w-full h-full flex items-center justify-center"><FiImage className="w-12 h-12 text-gray-300 dark:text-gray-700" /></div>
             )}
             {product.stock === 0 && (
               <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-[2px] flex items-center justify-center">
@@ -65,16 +65,16 @@ export default function ProductCard({ product }) {
               </div>
             )}
             {/* Rating badge */}
-            <div className="absolute top-3 right-3">
-              <div className="bg-white/90 backdrop-blur-sm rounded-full px-2.5 py-1 flex items-center gap-1 shadow-sm border border-white/50">
+            <div className="absolute top-3 right-3 z-10">
+              <div className="bg-white/95 dark:bg-gray-900/90 backdrop-blur-md rounded-full px-2.5 py-1 flex items-center gap-1 shadow-md border border-white/50 dark:border-gray-700/50">
                 <FiStar className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                <span className="text-xs font-bold text-gray-700">{product.rating?.toFixed(1) || 'N/A'}</span>
+                <span className="text-xs font-bold text-gray-800 dark:text-gray-200">{product.rating?.toFixed(1) || 'N/A'}</span>
               </div>
             </div>
             {/* Quick view overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-end justify-center pb-4">
-              <span className="flex items-center gap-1.5 bg-white/90 backdrop-blur-sm text-gray-800 text-xs font-semibold px-4 py-2 rounded-full shadow-lg translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-                <FiEye className="w-3.5 h-3.5" /> Quick View
+            <div className="absolute inset-0 bg-black/20 dark:bg-black/40 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center">
+              <span className="flex items-center gap-1.5 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-xs font-bold px-5 py-2.5 rounded-full shadow-xl translate-y-4 group-hover:translate-y-0 transition-transform duration-300 ease-out border border-gray-100 dark:border-gray-800">
+                <FiEye className="w-4 h-4" /> Quick View
               </span>
             </div>
           </div>
