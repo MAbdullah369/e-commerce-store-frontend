@@ -1,372 +1,680 @@
-# E-Commerce Website
+# E-Commerce Store Frontend
 
-A full-stack e-commerce platform with user authentication, product catalog, shopping cart, order management, and seller functionality.
+A modern, full-featured React e-commerce application built with Vite, React Router, and Tailwind CSS. This frontend provides a complete shopping experience with user authentication, product browsing, cart management, order processing, and admin/seller dashboards.
 
-## 📋 Project Structure
+## ✨ Features
 
-```
-e-commerce_website/
-├── backend/              # Node.js/Express backend API
-│   ├── config/          # Configuration files (DB, Cloudinary)
-│   ├── controllers/     # Request handlers
-│   ├── middleware/      # Custom middleware
-│   ├── models/          # MongoDB schemas
-│   ├── routes/          # API routes
-│   ├── seeders/         # Database seeders
-│   ├── package.json
-│   ├── server.js
-│   └── README.md
-├── frontend/            # React frontend
-│   ├── src/
-│   ├── public/
-│   ├── package.json
-│   └── index.html
-├── utils/              # Shared utilities
-└── README.md           # This file
-```
+- **User Authentication** - Login and registration with secure authentication
+- **Product Browsing** - Browse and search products with detailed information
+- **Shopping Cart** - Add/remove items with real-time updates
+- **Order Management** - Checkout and order history tracking
+- **Wishlist** - Save favorite products for later
+- **User Profile** - Manage account and personal information
+- **Admin Dashboard** - Manage platform users and products
+- **Seller Dashboard** - Manage seller's products and orders
+- **Responsive Design** - Mobile-friendly interface with Tailwind CSS
+- **Toast Notifications** - User-friendly alerts and notifications
+- **Protected Routes** - Role-based access control
 
-## 🚀 Features
+## 🛠️ Technologies
 
-### User Management
-- User registration and authentication
-- Role-based access control (Admin, Seller, Buyer)
-- User profile management
-- Password management
+- **React 18.2** - UI library
+- **Vite 8.0** - Build tool and dev server
+- **React Router 6.30** - Client-side routing
+- **Tailwind CSS 3.3** - Utility-first CSS framework
+- **Axios 1.5** - HTTP client for API calls
+- **React Hot Toast 2.6** - Toast notifications
+- **React Icons 5.6** - Icon library
 
-### Product Management
-- Browse products with filtering and search
-- Category-based organization
-- Product reviews and ratings
-- Seller product management
+## 📋 Prerequisites
 
-### Shopping Features
-- Shopping cart management
-- Wishlist functionality
-- Order creation and tracking
-- Order status management
-
-### Payment System
-- Payment processing simulation
-- Payment history
-- Refund management
-
-### Seller Features
-- Seller registration and profile
-- Shop management
-- Sales tracking
-- Product inventory management
-
-### Admin Features
-- User management
-- Order management
-- Review management
-- System administration
-
-## 🛠️ Tech Stack
-
-### Backend
-- **Node.js** - JavaScript runtime
-- **Express** - Web framework
-- **MongoDB** - Database
-- **Mongoose** - ODM for MongoDB
-- **JWT** - Authentication
-- **Multer** - File upload handling
-- **Bcryptjs** - Password hashing
-- **Dotenv** - Environment variables
-
-### Frontend
-- **HTML5** - Markup
-- **CSS3** - Styling
-- **JavaScript** - Frontend logic
-
-## 📦 Installation
-
-### Prerequisites
-- Node.js (v14 or higher)
-- MongoDB (local or cloud)
+- Node.js (v16 or higher)
 - npm or yarn
 
-### Backend Setup
+## 🚀 Quick Start
 
-1. Navigate to the backend directory:
+### 1. Install Dependencies
+
 ```bash
-cd backend
+npm install --legacy-peer-deps
 ```
 
-2. Install dependencies:
-```bash
-npm install
-```
+The `--legacy-peer-deps` flag is required due to peer dependency constraints between Vite 8.0 and the React plugin.
 
-3. Create a `.env` file in the backend directory:
-```env
-PORT=5000
-MONGO_URI=mongodb://localhost:27017/ecommerce
-JWT_SECRET=your-secret-key
-NODE_ENV=development
-```
+### 2. Run Development Server
 
-4. Seed the database (optional):
-```bash
-npm run seed
-```
-
-5. Start the development server:
 ```bash
 npm run dev
 ```
 
-The backend will be available at `http://localhost:5000`
+The application will start at `http://localhost:5173` (or another available port).
 
-### Frontend Setup
+### 3. Build for Production
 
-1. Navigate to the frontend directory:
 ```bash
-cd frontend
+npm run build
 ```
 
-2. Install dependencies:
+### 4. Preview Production Build
+
 ```bash
+npm run preview
+```
+
+## 📁 Project Structure
+
+```
+frontend/
+├── public/                          # Static assets
+├── src/
+│   ├── pages/                      # Page components
+│   │   ├── Home.jsx                # Landing page
+│   │   ├── Products.jsx            # Product listing
+│   │   ├── ProductDetail.jsx       # Individual product details
+│   │   ├── Login.jsx               # User login
+│   │   ├── Register.jsx            # User registration
+│   │   ├── Cart.jsx                # Shopping cart
+│   │   ├── Checkout.jsx            # Order checkout
+│   │   ├── Orders.jsx              # Order history
+│   │   ├── OrderDetail.jsx         # Order details
+│   │   ├── Wishlist.jsx            # Wishlist page
+│   │   ├── Profile.jsx             # User profile
+│   │   ├── AdminDashboard.jsx      # Admin panel
+│   │   ├── SellerDashboard.jsx     # Seller panel
+│   │   └── NotFound.jsx            # 404 page
+│   │
+│   ├── components/                 # Reusable components
+│   │   ├── Navbar.jsx              # Top navigation bar
+│   │   ├── Footer.jsx              # Page footer
+│   │   ├── ProductCard.jsx         # Product card component
+│   │   ├── ProtectedRoute.jsx      # Route protection wrapper
+│   │   └── Utils.jsx               # UI utilities
+│   │
+│   ├── context/                    # Global state management
+│   │   ├── AuthContext.jsx         # Authentication state
+│   │   ├── CartContext.jsx         # Shopping cart state
+│   │   └── ThemeContext.jsx        # Theme state
+│   │
+│   ├── services/                   # API integration
+│   │   └── api.js                  # Axios instance & API endpoints
+│   │
+│   ├── assets/                     # Images and static files
+│   ├── App.jsx                     # Main app component with routing
+│   ├── main.jsx                    # Application entry point
+│   ├── index.css                   # Global Tailwind styles
+│   └── style.css                   # Additional styles
+│
+├── index.html                      # HTML template
+├── package.json                    # Dependencies & scripts
+├── vite.config.js                  # Vite configuration
+├── tailwind.config.js              # Tailwind CSS configuration
+├── postcss.config.js               # PostCSS configuration
+└── README.md                       # This file
+```
+
+## 🔧 Configuration
+
+### Environment Variables
+
+Create a `.env` file in the root directory (if needed for API endpoints):
+
+```env
+VITE_API_BASE_URL=http://localhost:5000
+```
+
+### Tailwind CSS
+
+Tailwind is configured in `tailwind.config.js` for custom theming and component styling.
+
+### Vite
+
+Development and build settings are in `vite.config.js`.
+
+## 📡 API Integration
+
+API calls are centralized in `src/services/api.js` using Axios. Update the API base URL there to match your backend server.
+
+## 🔐 Authentication
+
+User authentication state is managed via `AuthContext.jsx`. Protected routes are wrapped with `ProtectedRoute.jsx` to enforce access control.
+
+## 🛒 Cart & State Management
+
+Cart state is managed using `CartContext.jsx`. Global theme preferences are handled by `ThemeContext.jsx`.
+
+## 📦 Available Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server |
+| `npm run build` | Build for production |
+| `npm run preview` | Preview production build |
+
+## 🤝 Contributing
+
+Feel free to fork this project and submit pull requests for improvements.
+
+## 📄 License
+
+This project is open source and available under the MIT License.
+```
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js 16+ 
+- Backend server running on http://localhost:5000
+- MongoDB database
+
+### Installation
+
+```bash
+# Install dependencies
 npm install
-```
 
-3. Start the development server:
-```bash
-npm start
+# Start development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
 ```
 
 The frontend will be available at `http://localhost:3000`
 
-## 📚 API Documentation
+## 📦 Dependencies
 
-### Authentication Endpoints
-- `POST /api/auth/register` - Register a new user
-- `POST /api/auth/login` - Login user
-- `GET /api/auth/verify` - Verify token
-- `POST /api/auth/logout` - Logout user
+### Core Dependencies
 
-### Product Endpoints
-- `GET /api/products` - Get all products
-- `GET /api/products/:id` - Get product by ID
-- `POST /api/products` - Create product (Seller/Admin)
-- `PUT /api/products/:id` - Update product (Seller/Admin)
-- `DELETE /api/products/:id` - Delete product (Seller/Admin)
-- `GET /api/products/categories` - Get all categories
-- `GET /api/products/category/:categoryId` - Get products by category
+```json
+{
+  "react": "^18.x",                    # UI library
+  "react-dom": "^18.x",                # React DOM rendering
+  "react-router-dom": "^6.x",          # Client-side routing
+  "axios": "^1.x",                     # HTTP client
+  "tailwindcss": "^3.x"                # Utility-first CSS
+}
+```
 
-### User Endpoints
-- `GET /api/users/profile` - Get user profile
-- `PUT /api/users/profile` - Update user profile
-- `PUT /api/users/change-password` - Change password
-- `GET /api/users` - Get all users (Admin)
-- `DELETE /api/users/:userId` - Delete user (Admin)
+### Dev Dependencies
 
-### Order Endpoints
-- `GET /api/orders` - Get user orders
-- `POST /api/orders` - Create order
-- `GET /api/orders/:id` - Get order by ID
-- `PUT /api/orders/:id/cancel` - Cancel order
-- `PUT /api/orders/:id/status` - Update order status (Admin)
-- `GET /api/orders/admin/all` - Get all orders (Admin)
-
-### Payment Endpoints
-- `POST /api/payments` - Create payment
-- `POST /api/payments/:paymentId/process` - Process payment
-- `GET /api/payments/:paymentId` - Get payment details
-- `POST /api/payments/:paymentId/refund` - Refund payment (Admin)
-- `GET /api/payments/order/:orderId` - Get order payments
-- `GET /api/payments/user/history` - Get user payments
-
-### Seller Endpoints
-- `POST /api/sellers/register` - Register as seller
-- `GET /api/sellers/profile` - Get seller profile
-- `PUT /api/sellers/profile` - Update seller profile
-- `GET /api/sellers/products` - Get seller products
-- `GET /api/sellers/sales` - Get seller sales
-- `GET /api/sellers` - Get all sellers
-- `GET /api/sellers/:sellerId` - Get seller by ID
-
-### Buyer Endpoints
-- `GET /api/buyers/cart` - Get cart
-- `POST /api/buyers/cart/add` - Add to cart
-- `PUT /api/buyers/cart/update` - Update cart item
-- `DELETE /api/buyers/cart/remove/:productId` - Remove from cart
-- `DELETE /api/buyers/cart/clear` - Clear cart
-- `GET /api/buyers/wishlist` - Get wishlist
-- `POST /api/buyers/wishlist/add` - Add to wishlist
-- `DELETE /api/buyers/wishlist/remove/:productId` - Remove from wishlist
-
-## 🗄️ Database Models
-
-### User
-- name, email, password, phone, address
-- role (buyer, seller, admin)
-- profileImage, isActive
-- timestamps
-
-### Product
-- name, description, price, category
-- stock, seller (reference)
-- image, rating, reviews
-- isActive, timestamps
-
-### Order
-- orderNumber, user, items
-- shippingAddress, totalAmount
-- status, paymentStatus, paymentMethod
-- timestamps
-
-### Cart
-- user, items, totalPrice, totalItems
-- timestamps
-
-### Wishlist
-- user, items
-- timestamps
-
-### Payment
-- order, user, amount, paymentMethod
-- transactionId, status
-- refundedAmount, refundReason
-- timestamps
-
-### Review
-- product, user, rating, title, comment
-- helpful, unhelpful, verified
-- timestamps
-
-### Shops
-- seller, shopName, description
-- address, phone, email, website
-- rating, totalReviews, followers
-- isVerified, isActive
-- timestamps
-
-### Category
-- name, description, slug
-- image, isActive
-- timestamps
-
-### Notification
-- user, type, title, message
-- relatedEntity, read
-- timestamps
+```json
+{
+  "@vitejs/plugin-react": "^4.x",      # Vite React plugin
+  "vite": "^4.x",                      # Build tool
+  "tailwindcss": "^3.x",               # CSS framework
+  "postcss": "^8.x",                   # CSS processing
+  "autoprefixer": "^10.x"              # CSS vendor prefixes
+}
+```
 
 ## 🔐 Authentication
 
-The API uses JWT (JSON Web Tokens) for authentication. Include the token in the `Authorization` header:
+### How it Works
+
+1. **Login/Register**: User submits credentials
+2. **Token Generation**: Backend generates JWT token
+3. **Token Storage**: Token saved in `localStorage` as `token`
+4. **Automatic Injection**: Request interceptor adds token to all requests
+5. **Token Verification**: Backend middleware verifies token on protected routes
+
+### Protected Routes
+
+```jsx
+// Routes that require authentication
+<Route path="/cart" element={<ProtectedRoute><Cart /></ProtectedRoute>} />
+<Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+<Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+<Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+```
+
+### Role-Based Access
+
+```jsx
+// Admin only
+<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>
+
+// Seller only
+<ProtectedRoute role="seller"><SellerDashboard /></ProtectedRoute>
+```
+
+## 🌐 API Integration
+
+### API Service Layer
+
+All API calls go through `src/services/api.js`:
+
+```javascript
+import { authAPI, productAPI, cartAPI, orderAPI } from '../services/api'
+
+// Authentication
+await authAPI.login(email, password)
+await authAPI.register(userData)
+await authAPI.logout()
+
+// Products
+await productAPI.getAllProducts(filters)
+await productAPI.getProductById(id)
+await productAPI.createProduct(data)
+
+// Cart
+await cartAPI.getCart()
+await cartAPI.addToCart(productId, quantity)
+await cartAPI.removeFromCart(productId)
+await cartAPI.updateCart(productId, quantity)
+
+// Orders
+await orderAPI.createOrder(orderData)
+await orderAPI.getOrders()
+await orderAPI.getOrderById(id)
+
+// Admin
+await adminAPI.getDashboardStats()
+await adminAPI.getAllUsers()
+
+// Seller
+await sellerAPI.getSellerStats()
+await sellerAPI.getSellerProducts()
+```
+
+### Base URL
+
+- **Development**: http://localhost:3000 (proxied to http://localhost:5000/api)
+- **Production**: Configure in `vite.config.js`
+
+## 📄 Pages Overview
+
+### Public Pages
+
+#### Home (`/`)
+- Hero section with search
+- Featured products
+- Call-to-action buttons
+- "Why Shop With Us" section
+
+#### Products (`/products`)
+- Product listing grid
+- Category filtering
+- Product search
+- Sorting options
+- Add to cart/wishlist
+
+#### Product Detail (`/products/:id`)
+- Full product information
+- Product images
+- Price and stock status
+- Customer reviews
+- Add to cart with quantity selector
+
+#### Login (`/login`)
+- Email and password fields
+- Remember me option
+- Link to registration
+- Error handling
+
+#### Register (`/register`)
+- Name, email, password fields
+- Phone number (optional)
+- Role selection (Buyer/Seller)
+- Terms acceptance
+
+### Protected Buyer Pages
+
+#### Cart (`/cart`)
+- List of cart items
+- Quantity adjustment
+- Remove items
+- Cart total
+- Checkout button
+
+#### Checkout (`/checkout`)
+- Shipping address form
+- Billing address
+- Order summary
+- Place order button
+
+#### Orders (`/orders`)
+- Order history
+- Order status
+- Order dates and amounts
+- Link to order details
+
+#### Order Detail (`/orders/:id`)
+- Complete order information
+- Shipping address
+- Order items
+- Payment status
+- Order timeline
+
+#### Wishlist (`/wishlist`)
+- Saved products
+- Remove from wishlist
+- View product details
+- Add to cart from wishlist
+
+#### Profile (`/profile`)
+- User information
+- Address management
+- Password change
+- Phone and email updates
+
+### Dashboard Pages
+
+#### Admin Dashboard (`/admin`)
+- Dashboard statistics
+- User management
+- Product management
+- Order management
+- Sales analytics
+
+#### Seller Dashboard (`/seller`)
+- Sales statistics
+- Product management
+- Order fulfillment
+- Sales analytics
+- Shop management
+
+## 🎨 Tailwind CSS Styling
+
+### Custom Configuration
+
+```javascript
+// tailwind.config.js
+module.exports = {
+  content: [
+    './index.html',
+    './src/**/*.{js,jsx}',
+  ],
+  theme: {
+    extend: {
+      colors: {
+        primary: '#3B82F6',    // Blue
+        secondary: '#10B981',  // Green
+      },
+    },
+  },
+  plugins: [],
+}
+```
+
+### Common Classes
+
+```css
+/* Buttons */
+.btn-primary     { @apply px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700; }
+.btn-secondary   { @apply px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700; }
+.btn-danger      { @apply px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700; }
+
+/* Cards */
+.card            { @apply bg-white rounded-lg shadow p-6; }
+
+/* Inputs */
+.input-field     { @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500; }
+```
+
+## 📱 Responsive Design
+
+All components are mobile-first and responsive:
+
+```jsx
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+  {/* Responsive grid: 1 col on mobile, 2 on small screens, 4 on desktop */}
+</div>
+```
+
+## 🔄 State Management
+
+### AuthContext
+
+Manages user authentication state globally:
+
+```javascript
+const { user, isAuthenticated, login, logout } = useContext(AuthContext)
+```
+
+### CartContext
+
+Manages shopping cart and wishlist state:
+
+```javascript
+const { cart, wishlist, addToCart, removeFromCart } = useContext(CartContext)
+```
+
+## ⚠️ Error Handling
+
+### Global Error Handler
+
+```javascript
+// Automatically handles:
+// - 401 Unauthorized: Logs out user and redirects to login
+// - 403 Forbidden: Shows permission error
+// - 404 Not Found: Shows not found error
+// - 500 Server Error: Shows server error message
+```
+
+### Component Error Handling
+
+```jsx
+try {
+  const response = await productAPI.getAllProducts()
+  setProducts(response.data)
+} catch (error) {
+  setError(error.response?.data?.error || 'An error occurred')
+}
+```
+
+## 🧪 Testing
+
+### Run Tests
+
+```bash
+npm run test
+```
+
+### Test Files
 
 ```
-Authorization: Bearer <token>
+src/__tests__/
+├── components/
+├── pages/
+├── context/
+└── services/
 ```
 
-## 👥 User Roles
+## 🚢 Deployment
+
+### Build for Production
+
+```bash
+npm run build
+```
+
+Creates optimized build in `dist/` folder.
+
+### Deploy to Netlify
+
+```bash
+# Install Netlify CLI
+npm install -g netlify-cli
+
+# Deploy
+netlify deploy --prod
+```
+
+### Environment Variables
+
+Create `.env.production` for production:
+
+```
+VITE_API_URL=https://your-backend-api.com/api
+```
+
+Update `vite.config.js`:
+
+```javascript
+export default defineConfig({
+  define: {
+    'import.meta.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_URL)
+  }
+})
+```
+
+## 🔧 Development Tips
+
+### Hot Module Replacement
+
+Changes are automatically reflected in the browser as you edit files.
+
+### Debugging
+
+```bash
+# Enable Chrome DevTools
+npm run dev
+
+# Open Chrome DevTools (F12)
+# Go to Sources tab to see source maps
+```
+
+### Component Development
+
+```jsx
+// Use React Developer Tools extension
+// to inspect component props and state
+```
+
+### Network Debugging
+
+```javascript
+// Check Network tab in Chrome DevTools
+// All API requests should show /api/* paths
+// Token should be in Authorization header
+```
+
+## 📚 API Endpoints
+
+### Authentication
+
+```
+POST   /api/auth/login              # Login user
+POST   /api/auth/register           # Register user
+POST   /api/auth/logout             # Logout user
+GET    /api/auth/verify             # Verify token
+```
+
+### Products
+
+```
+GET    /api/products                # Get all products
+GET    /api/products/:id            # Get product by ID
+POST   /api/products                # Create product (seller)
+PUT    /api/products/:id            # Update product (seller)
+DELETE /api/products/:id            # Delete product (seller)
+```
+
+### Cart
+
+```
+GET    /api/cart                    # Get cart
+POST   /api/cart                    # Add to cart
+PUT    /api/cart/:productId         # Update cart item
+DELETE /api/cart/:productId         # Remove from cart
+DELETE /api/cart                    # Clear cart
+```
+
+### Orders
+
+```
+GET    /api/orders                  # Get user orders
+POST   /api/orders                  # Create order
+GET    /api/orders/:id              # Get order details
+DELETE /api/orders/:id              # Cancel order
+```
+
+### Wishlist
+
+```
+GET    /api/wishlist                # Get wishlist
+POST   /api/wishlist                # Add to wishlist
+DELETE /api/wishlist/:productId     # Remove from wishlist
+```
+
+### User
+
+```
+GET    /api/user/profile            # Get user profile
+PUT    /api/user/profile            # Update profile
+POST   /api/user/change-password    # Change password
+```
 
 ### Admin
-- Manage all users
-- Manage all orders
-- Manage reviews
-- System administration
+
+```
+GET    /api/admin/stats             # Dashboard stats
+GET    /api/admin/users             # All users
+PUT    /api/admin/users/:id         # Update user
+DELETE /api/admin/users/:id         # Delete user
+```
 
 ### Seller
-- Create and manage products
-- View sales
-- Manage shop profile
-- Track orders
 
-### Buyer
-- Browse products
-- Create orders
-- Manage cart and wishlist
-- Leave reviews
-- Track order status
-
-## 🎯 Sample Credentials
-
-After seeding, use these credentials:
-
-| Role  | Email                    | Password   |
-|-------|--------------------------|------------|
-| Admin | admin@ecommerce.com      | Admin123@  |
-| Buyer | buyer1@ecommerce.com     | Buyer123@  |
-| Seller| seller1@ecommerce.com    | Seller123@ |
-
-## 📝 Environment Variables
-
-Backend `.env` file:
-
-```env
-PORT=5000
-MONGO_URI=mongodb://localhost:27017/ecommerce
-JWT_SECRET=your-jwt-secret-key
-NODE_ENV=development
+```
+GET    /api/seller/stats            # Seller stats
+GET    /api/seller/products         # Seller products
+GET    /api/seller/orders           # Seller orders
+POST   /api/seller/products         # Create product
+PUT    /api/seller/products/:id     # Update product
+DELETE /api/seller/products/:id     # Delete product
 ```
 
-## 🧪 Database Seeding
+## 🐛 Troubleshooting
 
-To populate the database with sample data:
+### CORS Errors
 
-```bash
-npm run seed
-```
+**Solution**: Make sure Vite proxy is configured correctly in `vite.config.js`
 
-This will create:
-- 1 Admin user
-- 2 Buyer users
-- 1 Seller user
-- 8 Product categories
-- 10 Sample products
+### 401 Unauthorized
 
-## 🚦 Running the Application
+**Solution**: Token is invalid or expired. User will be redirected to login.
 
-### Development Mode
+### API Not Found
 
-Backend:
-```bash
-cd backend
-npm run dev
-```
+**Solution**: Make sure backend is running on http://localhost:5000
 
-Frontend:
-```bash
-cd frontend
-npm start
-```
+### Blank Page
 
-### Production Mode
+**Solution**: Check browser console for errors, clear localStorage
 
-Backend:
-```bash
-cd backend
-npm start
-```
+### Token Not Sent
 
-## 📖 Contributing
+**Solution**: Check Request Interceptor in `services/api.js`
 
-1. Create a feature branch (`git checkout -b feature/amazing-feature`)
-2. Commit your changes (`git commit -m 'Add amazing feature'`)
-3. Push to the branch (`git push origin feature/amazing-feature`)
-4. Open a Pull Request
+## 📖 Documentation
+
+- [Frontend-Backend Integration Guide](../FRONTEND_BACKEND_INTEGRATION_GUIDE.md)
+- [Backend README](../backend/README.md)
+- [Tailwind CSS Docs](https://tailwindcss.com/docs)
+- [React Router Docs](https://reactrouter.com/)
+- [Axios Docs](https://axios-http.com/)
 
 ## 📄 License
 
-This project is licensed under the ISC License.
+MIT
 
-## 🤝 Support
+## 👨‍💻 Author
 
-For support, email support@ecommerce.com or open an issue in the repository.
+E-Commerce Team
 
-## 🗺️ Roadmap
+## 🤝 Contributing
 
-- [ ] Implement advanced search and filtering
-- [ ] Add product recommendations
-- [ ] Implement email notifications
-- [ ] Add payment gateway integration
-- [ ] Implement inventory management system
-- [ ] Add analytics dashboard
-- [ ] Mobile app development
-- [ ] Real-time chat support
+Contributions are welcome! Please follow these steps:
 
----
+1. Create a feature branch
+2. Make your changes
+3. Submit a pull request
 
-**Happy coding! 🎉** 
+## 📞 Support
+
+For support, email: support@ecommerce.com
